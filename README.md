@@ -1,20 +1,14 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Nihongo Quest
 
-# Run and deploy your AI Studio app
+Jogo de RPG para aprender Japonês.
 
-This contains everything you need to run your app locally.
+## Como publicar no GitHub Pages (IMPORTANTE)
 
-View your app in AI Studio: https://ai.studio/apps/69af52be-03fc-4d7a-9ff5-f26b1727d2b4
+Para que o site funcione pelo link do GitHub, você precisa fazer o seguinte:
 
-## Run Locally
+1. Vá no seu repositório no GitHub.
+2. Clique em **Settings** (Configurações).
+3. No menu esquerdo, clique em **Pages**.
+4. Em **Build and deployment** > **Source**, altere de "Deploy from a branch" para **GitHub Actions**.
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+O site será construído e publicado automaticamente em cerca de 1 a 2 minutos.
