@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Spell, ElementType } from '../types';
 import { ELEMENTS_INFO, STATUS_NAMES_PT } from '../constants';
 import { VOCABULARY } from '../vocabulary';
@@ -10,6 +11,8 @@ interface SpellbookProps {
 }
 
 export default function Spellbook({ level, unlockedCount, spellCooldowns, onClose }: SpellbookProps) {
+  const [expandedSealed, setExpandedSealed] = useState<Record<string, boolean>>({});
+
   const grouped: Record<string, Spell[]> = {};
   VOCABULARY.forEach(v => {
     if (!grouped[v.element]) grouped[v.element] = [];
@@ -37,6 +40,10 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, onClos
     );
   };
 
+  const toggleSealed = (category: string) => {
+    setExpandedSealed(prev => ({ ...prev, [category]: !prev[category] }));
+  };
+
   return (
     <div className="fixed inset-0 bg-[#0a0a0a]/90 flex items-center justify-center z-[100] p-2 md:p-6 backdrop-blur-md">
       <div className="grimoire-page !h-[95vh] md:!h-[90vh] flex flex-col !p-6 md:!p-12 relative">
@@ -61,6 +68,9 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, onClos
               const spells = grouped[key];
               if (!spells) return null;
 
+              const unlockedSpells = spells.filter(s => level >= s.unlockLevel);
+              const sealedSpells = spells.filter(s => level < s.unlockLevel);
+
               return (
                 <div key={key} className="break-inside-avoid flex flex-col mb-12">
                    <div className="flex items-center gap-3 border-b-2 border-ink-dark/40 pb-2 mb-4">
@@ -69,17 +79,7 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, onClos
                    </div>
                    
                    <div className="flex flex-col gap-6">
-                     {spells.map((vocab) => {
-                       const isUnlocked = level >= vocab.unlockLevel;
-                       if (!isUnlocked) {
-                         return (
-                           <div key={vocab.pt} className="flex justify-between items-center opacity-30 py-2 border-b border-ink-dark/5">
-                             <span className="title-text font-bold text-lg">??? (Selado)</span>
-                             <span className="text-xs">Nv {vocab.unlockLevel}</span>
-                           </div>
-                         );
-                       }
-                       
+                     {unlockedSpells.map((vocab) => {
                        const currentCooldown = spellCooldowns[vocab.pt] || 0;
                        
                        return (
@@ -99,6 +99,28 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, onClos
                          </div>
                        );
                      })}
+
+                     {sealedSpells.length > 0 && (
+                       <div className="mt-2 flex flex-col gap-2">
+                         <button 
+                           onClick={() => toggleSealed(key)}
+                           className="w-full text-center py-2 border border-ink-dark/20 text-ink-dark/60 text-xs font-bold uppercase tracking-widest hover:bg-ink-dark/5 transition-colors title-text"
+                         >
+                           {expandedSealed[key] ? 'Ocultar feitiços selados' : `Mostrar feitiços selados (${sealedSpells.length} restantes)`}
+                         </button>
+                         
+                         {expandedSealed[key] && (
+                           <div className="flex flex-col gap-2 opacity-50 mt-2">
+                             {sealedSpells.map(vocab => (
+                               <div key={vocab.pt} className="flex justify-between items-center py-2 border-b border-ink-dark/5">
+                                 <span className="title-text font-bold text-base md:text-lg">??? (Selado)</span>
+                                 <span className="text-xs uppercase title-text">Nv {vocab.unlockLevel}</span>
+                               </div>
+                             ))}
+                           </div>
+                         )}
+                       </div>
+                     )}
                    </div>
                 </div>
               );

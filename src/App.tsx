@@ -570,25 +570,44 @@ export default function App() {
 
   const createSparkle = (e: FormEvent) => {
     if (!sparkContainerRef.current) return;
-    const sparkle = document.createElement('div');
-    sparkle.innerHTML = ['✨', '⭐', '🪄', '💠', '✦'][Math.floor(Math.random() * 5)];
-    sparkle.className = 'absolute pointer-events-none z-50 text-[10px] md:text-sm anim-sparkle';
-    sparkle.style.color = '#fde047';
-    sparkle.style.textShadow = '0 0 5px white';
-    
-    const tx = (Math.random() - 0.5) * 80;
-    const ty = -Math.random() * 60 - 20;
-    sparkle.style.setProperty('--tx', `${tx}px`);
-    sparkle.style.setProperty('--ty', `${ty}px`);
-    
-    const rect = (e.target as HTMLInputElement).getBoundingClientRect();
+    const inputE = e.target as HTMLInputElement;
+    const rect = inputE.getBoundingClientRect();
     const containerRect = sparkContainerRef.current.getBoundingClientRect();
     
-    sparkle.style.left = `${Math.random() * rect.width + (rect.left - containerRect.left)}px`;
-    sparkle.style.top = `${Math.random() * rect.height + (rect.top - containerRect.top)}px`;
-    
-    sparkContainerRef.current.appendChild(sparkle);
-    setTimeout(() => sparkle.remove(), 800);
+    // Create 2-3 particles per keystroke for a richer effect
+    const numParticles = Math.floor(Math.random() * 2) + 2;
+    const colors = ['#fde047', '#60a5fa', '#f472b6', '#34d399', '#c084fc', '#ffffff'];
+
+    for (let i = 0; i < numParticles; i++) {
+       const sparkle = document.createElement('div');
+       sparkle.innerHTML = ['✨', '⭐', '🪄', '✦', '✧', '✦'][Math.floor(Math.random() * 6)];
+       sparkle.className = 'absolute pointer-events-none z-50 text-[10px] md:text-sm anim-sparkle';
+       
+       const color = colors[Math.floor(Math.random() * colors.length)];
+       sparkle.style.color = color;
+       sparkle.style.textShadow = `0 0 8px ${color}, 0 0 12px white`;
+       
+       const tx = (Math.random() - 0.5) * 120;
+       const ty = -Math.random() * 80 - 10;
+       
+       // Add slight rotation
+       const rot = (Math.random() - 0.5) * 180;
+       sparkle.style.transform = `rotate(${rot}deg)`;
+       
+       sparkle.style.setProperty('--tx', `${tx}px`);
+       sparkle.style.setProperty('--ty', `${ty}px`);
+       
+       // Position near the typing cursor (heuristically at the end or random)
+       const isAtEnd = true; // simplifying
+       const horizontalOffset = isAtEnd ? inputE.value.length * 8 : Math.random() * rect.width;
+       const clampedOffset = Math.min(horizontalOffset, rect.width - 20) + 10;
+       
+       sparkle.style.left = `${clampedOffset + (rect.left - containerRect.left)}px`;
+       sparkle.style.top = `${Math.random() * rect.height * 0.5 + (rect.top - containerRect.top)}px`;
+       
+       sparkContainerRef.current.appendChild(sparkle);
+       setTimeout(() => sparkle.remove(), 800);
+    }
   };
 
   const resetGame = () => {
@@ -737,9 +756,9 @@ export default function App() {
         </div>
 
         {/* RIGHT PAGE - Action Context */}
-        <div className="flex-1 p-4 md:p-12 flex flex-col w-full md:w-1/2 border-t-2 border-ink-dark/30 md:border-t-0 md:border-l-2 h-full min-h-0 overflow-y-auto md:overflow-hidden custom-scrollbar">
+        <div className="flex-1 p-4 md:p-12 flex flex-col w-full md:w-1/2 border-t-2 border-ink-dark/30 md:border-t-0 md:border-l-2 h-full min-h-0">
             {/* Player Info Area */}
-            <div className={cn("mb-8 pb-4 border-b-2 border-ink-dark/20 flex flex-col w-full transition-all", playerShake && "anim-damage")}>
+            <div className={cn("mb-6 pb-4 border-b-2 border-ink-dark/20 flex flex-col w-full transition-all flex-shrink-0", playerShake && "anim-damage")}>
               <div className="flex justify-between items-end w-full mb-4">
                 <div className="flex flex-col">
                   <span className="font-bold uppercase tracking-widest title-text text-base text-ink-dark/90 leading-tight">
@@ -775,7 +794,7 @@ export default function App() {
             </div>
 
             {/* Input Form */}
-            <div className="flex flex-col gap-6 mt-auto" ref={sparkContainerRef}>
+            <div className="flex flex-col gap-6 flex-shrink-0" ref={sparkContainerRef}>
                <div className="flex flex-col relative">
                   <label htmlFor="answer-input" className="text-sm font-bold mb-2 uppercase tracking-widest title-text opacity-70">Escrever Encantamento</label>
                   <input 
@@ -825,10 +844,10 @@ export default function App() {
                </div>
             </div>
             
-            {/* Logs Area (STRICT HEIGHT AND NO STRETCH) */}
-            <div className="mt-4 md:mt-auto pt-4 border-t-2 border-ink-dark/20 flex flex-col min-h-[160px] md:min-h-0 md:h-[220px] overflow-hidden flex-shrink-0">
+            {/* Logs Area (Fills the remaining space) */}
+            <div className="mt-8 pt-4 border-t-2 border-ink-dark/20 flex flex-col flex-1 min-h-[160px] overflow-hidden">
                <h3 className="title-text text-xs font-bold uppercase tracking-widest opacity-50 mb-2 truncate">Registro de Batalha (戦いの記録)</h3>
-               <div className="flex-1 min-h-0 relative bg-ink-dark/5 border border-ink-dark/10 p-2 overflow-hidden flex-shrink-0 rounded shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
+               <div className="flex-1 relative bg-ink-dark/5 border border-ink-dark/10 p-2 overflow-hidden flex-shrink-0 rounded shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
                  <BattleLog logs={logs} />
                </div>
             </div>
