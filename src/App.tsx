@@ -19,6 +19,7 @@ import {
 } from './constants';
 import { VOCABULARY } from './vocabulary';
 import { MONSTERS_LIST } from './monsters';
+import { getMonsterVariation } from './monsterVariations';
 import BattleLog from './components/BattleLog';
 import Spellbook from './components/Spellbook';
 import Overlay from './components/Overlay';
@@ -40,6 +41,8 @@ const INITIAL_PLAYER: Player = {
 };
 
 export default function App() {
+  const [gameStarted, setGameStarted] = useState(false);
+  const [playerName, setPlayerName] = useState('');
   const [player, setPlayer] = useState<Player>(INITIAL_PLAYER);
   const [monsterIndex, setMonsterIndex] = useState(0);
   const [monster, setMonster] = useState<Monster | null>(null);
@@ -78,8 +81,13 @@ export default function App() {
     }
 
     const template = MONSTERS_LIST[index];
+    const variation = getMonsterVariation(template.name);
+    
     const newMonster: Monster = {
       ...template,
+      name: variation.name,
+      variationName: variation.name,
+      variationTranslation: variation.translation,
       maxHp: template.hp,
       currentHp: template.hp,
       statuses: [],
@@ -470,8 +478,35 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 md:p-8 overflow-y-auto">
-      <div className="grimoire-page flex flex-col md:flex-row !p-0 max-w-6xl w-full relative">
+    <div className="min-h-screen flex flex-col items-center p-2 md:py-12 md:px-8">
+      {!gameStarted ? (
+        <div className="grimoire-page my-auto shrink-0 flex flex-col items-center justify-center !p-12 max-w-xl w-full relative text-center">
+            <h1 className="title-text text-4xl md:text-5xl font-bold tracking-widest text-ink-dark mb-8">COMO VOCÊ SE CHAMA?</h1>
+            <input 
+              type="text" 
+              className="grimoire-input mb-8 !text-4xl"
+              placeholder="Digite seu nome..."
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && playerName.trim()) {
+                  setGameStarted(true);
+                }
+              }}
+              autoFocus
+            />
+            <button 
+              onClick={() => {
+                if (playerName.trim()) setGameStarted(true);
+              }}
+              disabled={!playerName.trim()}
+              className="grimoire-btn btn-crimson text-xl py-4 px-12 disabled:opacity-50"
+            >
+              INICIAR JORNADA
+            </button>
+        </div>
+      ) : (
+      <div className="grimoire-page my-auto shrink-0 flex flex-col md:flex-row !p-0 max-w-6xl w-full relative">
         <div className="grimoire-spine hidden md:block" />
         
         {/* LEFT PAGE - Battle Context */}
@@ -479,7 +514,7 @@ export default function App() {
            {/* Header */}
            <div className="mb-6 border-b-2 border-ink-dark/30 pb-2 flex justify-between items-end">
              <div className="flex flex-col">
-               <h1 className="title-text text-3xl font-bold tracking-widest text-ink-dark">DIÁRIO DE B.</h1>
+               <h1 className="title-text text-3xl font-bold tracking-widest text-ink-dark uppercase">AVENTURAS DE {playerName || 'O ESTUDANTE'}</h1>
                <span className="jp-text text-sm font-bold text-ink-red tracking-widest italic opacity-80">戦いの記録</span>
              </div>
              <button 
@@ -508,16 +543,33 @@ export default function App() {
            )}
 
            {/* Player Details */}
-           <div className="mb-6 flex flex-col">
-             <div className="flex justify-between items-end mb-1">
-               <span className="font-bold uppercase tracking-widest handwriting text-2xl text-ink-dark/80">O Estudante (Nv.{player.level})</span>
-               <span className="font-bold text-sm tracking-widest handwriting text-2xl text-ink-dark/80">{player.hp}/{player.maxHp} HP</span>
+           <div className="mb-6 flex flex-col w-full">
+             <div className="flex justify-between items-end w-full mb-2">
+               <div className="flex flex-col">
+                 <span className="font-bold uppercase tracking-widest title-text text-xl md:text-2xl text-ink-dark/90 leading-tight">
+                   {playerName || 'O ESTUDANTE'}
+                 </span>
+                 <span className="font-bold uppercase tracking-widest title-text text-lg md:text-xl text-ink-dark/80">
+                   (NV. {player.level})
+                 </span>
+               </div>
+               <div className="flex flex-col items-end">
+                 <span className="font-bold uppercase tracking-widest title-text text-lg md:text-xl text-ink-dark/90 leading-tight">
+                   {player.hp}/{player.maxHp}
+                 </span>
+                 <span className="font-bold uppercase tracking-widest title-text text-sm text-ink-dark/80">
+                   HP
+                 </span>
+               </div>
              </div>
-             <div className="hp-track mb-2">
-               <div className="hp-fill hp-player" style={{ width: `${(player.hp / player.maxHp) * 100}%` }}></div>
-             </div>
-             <div className="hp-track h-1 opacity-50">
-               <div className="hp-fill xp-player-bar" style={{ width: `${(player.xp / player.maxXp) * 100}%` }}></div>
+             
+             <div className="w-full">
+               <div className="hp-track mb-1.5 h-2.5 !bg-transparent border-b-4 border-ink-dark/80 rounded-none shadow-none">
+                 <div className="hp-fill bg-ink-dark/80" style={{ width: `${(player.hp / player.maxHp) * 100}%`, height: '100%', borderRadius: 0 }}></div>
+               </div>
+               <div className="h-1 border border-ink-dark/30 mt-1 p-[1px]">
+                 <div className="h-full bg-ink-dark/40" style={{ width: `${(player.xp / player.maxXp) * 100}%`, borderRadius: 0 }}></div>
+               </div>
              </div>
              
              {player.statuses.length > 0 && (
@@ -533,7 +585,7 @@ export default function App() {
            </div>
 
            {/* Monster Details */}
-           <div className="flex-1 flex flex-col items-center justify-center mt-4 pt-12 relative min-h-[250px]">
+           <div className="flex-1 flex flex-col items-center justify-center mt-2 relative min-h-[200px]">
              {monsterSpeech && (
                 <div className="speech-bubble speech-show">
                   <span className="relative z-10">{monsterSpeech}</span>
@@ -544,7 +596,7 @@ export default function App() {
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 text-5xl text-ink-dark animate-bounce title-text opacity-50">!</div>
              )}
              
-             <div className={cn("idle-float text-[100px] transition-transform drop-shadow-xl saturate-50", isAnimating && "anim-attack-m")}>
+             <div className={cn("idle-float text-[80px] md:text-[100px] transition-transform drop-shadow-xl saturate-50", isAnimating && "anim-attack-m")}>
                 {monster?.emoji || '❔'}
              </div>
              
@@ -555,11 +607,16 @@ export default function App() {
                       onClick={() => setShowJpName(!showJpName)}
                       className={cn("handwriting text-3xl font-black cursor-pointer border-b border-dashed border-ink-dark/30 tracking-wide uppercase", monster?.color || "text-ink-dark")}
                     >
-                      {monster?.name || '---'}
+                      {monster?.variationName || monster?.name || '---'}
                     </span>
                     {showJpName && monster && (
-                      <div className="jp-text absolute bottom-full left-0 text-sm mb-2 bg-[#d3c4ad] border border-ink-dark/30 px-3 py-1 shadow-md whitespace-nowrap z-50 font-bold opacity-80">
-                        {monster.romaji} / {monster.kanji !== monster.kana ? monster.kanji : monster.kana}
+                      <div className="jp-text absolute bottom-[120%] left-0 text-sm mb-2 bg-[#d3c4ad] border border-ink-dark/30 px-3 py-2 shadow-md whitespace-nowrap z-50 font-bold opacity-90 flex flex-col gap-1">
+                        <span>{monster.romaji} / {monster.kanji !== monster.kana ? monster.kanji : monster.kana}</span>
+                        {monster.variationTranslation && (
+                          <span className="text-xs uppercase title-text border-t border-ink-dark/20 pt-1 mt-1">
+                            {monster.variationTranslation}
+                          </span>
+                        )}
                       </div>
                     )}
                  </div>
@@ -639,9 +696,9 @@ export default function App() {
             </div>
             
             {/* Logs Area */}
-            <div className="flex-1 mt-8 pt-4 border-t-2 border-ink-dark/20 flex flex-col h-[200px] md:h-auto">
+            <div className="flex-1 mt-8 pt-4 border-t-2 border-ink-dark/20 flex flex-col min-h-[120px]">
                <h3 className="title-text text-sm font-bold uppercase tracking-widest opacity-60 mb-2">Acontecimentos</h3>
-               <div className="flex-1 min-h-[150px] relative">
+               <div className="flex-1 relative">
                  <BattleLog logs={logs} />
                </div>
             </div>
@@ -667,6 +724,7 @@ export default function App() {
         />
 
       </div>
+      )}
     </div>
   );
 }

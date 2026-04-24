@@ -6,8 +6,8 @@
   --color-ink-red: #8b0000;
   --color-ink-green: #064e3b;
   --color-ink-blue: #1e3a8a;
-  --color-parchment: #f4ecd8;
-  --color-parchment-dark: #e3d5b8;
+  --color-parchment: #e8dcc4;
+  --color-parchment-dark: #cfa878;
   --color-gold: #b8860b;
 
   --font-merriweather: "Cutive Mono", monospace;
@@ -92,7 +92,7 @@
 
 @layer base {
   body {
-    @apply text-ink-dark font-merriweather selection:bg-ink-dark/20 selection:text-ink-dark antialiased m-0 overflow-hidden;
+    @apply text-ink-dark font-merriweather selection:bg-ink-dark/20 selection:text-ink-dark antialiased m-0;
     background-color: #0a0a0a;
   }
 
@@ -103,12 +103,12 @@
 
 @layer components {
   .grimoire-page {
-    @apply w-full max-w-[1200px] bg-parchment rounded-xl relative flex flex-col p-6 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,1)];
+    @apply w-full max-w-[1200px] bg-parchment rounded-[2px] relative flex flex-col p-6 md:p-12 shadow-[0_40px_80px_rgba(0,0,0,1)];
     min-height: 90vh;
     background-image: 
-      radial-gradient(circle at center, transparent 40%, rgba(30,20,10,0.5) 100%),
+      radial-gradient(circle at center, transparent 30%, rgba(60,35,15,0.7) 100%),
       url('https://www.transparenttextures.com/patterns/old-wall.png');
-    border: 2px solid #1a1410;
+    border: 3px solid #1a1410;
   }
 
   .grimoire-spine {

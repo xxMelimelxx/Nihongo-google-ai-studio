@@ -50,6 +50,8 @@ export interface Monster extends MonsterTemplate {
   statuses: StatusEffect[];
   bonusActive: boolean;
   isRare?: boolean;
+  variationName?: string;
+  variationTranslation?: string;
 }
 
 export interface Player {
