@@ -10,7 +10,8 @@
 
 import { useState, useEffect, useRef, useCallback, FormEvent } from 'react';
 import * as wanakana from 'wanakana';
-import { Player, Monster, Spell, LogEntry, StatusType } from './types';
+import { motion, AnimatePresence } from 'motion/react';
+import { Player, Monster, Spell, LogEntry, StatusType, ElementType } from './types';
 import { 
   STATUS_ICONS, 
   STATUS_NAMES_PT, 
@@ -30,6 +31,88 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const HPBar = ({ current, max, colorClass, isMonster = false }: { current: number, max: number, colorClass?: string, isMonster?: boolean }) => {
+  const percentage = Math.max(0, Math.min(100, (current / max) * 100));
+  
+  return (
+    <div className="w-full">
+      <div className="flex justify-between items-end mb-1">
+        <span className="font-bold text-[10px] uppercase tracking-widest title-text opacity-70">
+          HP {isMonster ? 'DO MONSTRO' : 'ATUAL'}
+        </span>
+        <span className="font-mono text-sm font-bold">
+          {Math.ceil(current)} / {max}
+        </span>
+      </div>
+      <div className="relative h-4 bg-ink-dark/10 border-2 border-ink-dark/40 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]">
+        {/* Ghost bar lagging behind */}
+        <motion.div 
+          className="absolute inset-0 bg-ink-red/30"
+          initial={false}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+        />
+        {/* Main bar */}
+        <motion.div 
+          className={cn("absolute inset-0", colorClass || "bg-ink-dark")}
+          initial={false}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 0.4, ease: "circOut" }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const SpellEffectOverlay = ({ element }: { element: ElementType | null }) => {
+  if (!element) return null;
+  
+  const colors: Partial<Record<ElementType, string>> = {
+    fire: 'bg-red-500/20',
+    water: 'bg-blue-500/20',
+    thunder: 'bg-yellow-400/30',
+    wind: 'bg-emerald-300/20',
+    nature: 'bg-green-600/20',
+    physical: 'bg-stone-500/20',
+    light: 'bg-white/40',
+    arcane: 'bg-purple-600/30',
+    void: 'bg-black/50',
+    utility: 'bg-gray-400/10'
+  };
+
+  const icons: Partial<Record<ElementType, string>> = {
+    fire: '🔥',
+    water: '🌊',
+    thunder: '⚡',
+    wind: '🌪️',
+    nature: '🌿',
+    physical: '💥',
+    light: '✨',
+    arcane: '🔮',
+    void: '🌌',
+    utility: '🪄'
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className={cn("absolute inset-0 z-40 flex items-center justify-center pointer-events-none", colors[element] || "bg-white/10")}
+    >
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: [1.5, 1], opacity: [1, 0.8] }}
+        exit={{ scale: 2, opacity: 0 }}
+        transition={{ duration: 0.8 }}
+        className="text-[120px] filter drop-shadow-[0_0_20px_white]"
+      >
+        {icons[element] || '✨'}
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const INITIAL_PLAYER: Player = {
   maxHp: 150,
   hp: 150,
@@ -44,6 +127,8 @@ export default function App() {
   const [gameStarted, setGameStarted] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [player, setPlayer] = useState<Player>(INITIAL_PLAYER);
+  const [playerShake, setPlayerShake] = useState(false);
+  const [monsterShake, setMonsterShake] = useState(false);
   const [monsterIndex, setMonsterIndex] = useState(0);
   const [monster, setMonster] = useState<Monster | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -55,6 +140,7 @@ export default function App() {
   const [monsterSpeech, setMonsterSpeech] = useState<string | null>(null);
   const [showJpName, setShowJpName] = useState(false);
   const [spellCooldowns, setSpellCooldowns] = useState<Record<string, number>>({});
+  const [activeEffect, setActiveEffect] = useState<ElementType | null>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const sparkContainerRef = useRef<HTMLDivElement>(null);
@@ -81,9 +167,11 @@ export default function App() {
     }
 
     const template = MONSTERS_LIST[index];
-    const variation = getMonsterVariation(template.name);
+    // Variações agora são raras (apenas 20% de chance)
+    const shouldHaveVariation = Math.random() < 0.2;
+    const variation = shouldHaveVariation ? getMonsterVariation(template.name) : { name: template.name, translation: undefined };
     
-    const newMonster: Monster = {
+    let newMonster: Monster = {
       ...template,
       name: variation.name,
       variationName: variation.name,
@@ -93,6 +181,27 @@ export default function App() {
       statuses: [],
       bonusActive: false,
     };
+
+    // Aplicar buffs baseados na variação
+    if (shouldHaveVariation) {
+      const lowerName = variation.name.toLowerCase();
+      if (lowerName.includes('rei') || lowerName.includes('ou') || lowerName.includes('grande') || lowerName.includes('colossal')) {
+        newMonster.maxHp = Math.floor(newMonster.maxHp * 1.5);
+        newMonster.currentHp = newMonster.maxHp;
+        newMonster.attack = Math.floor(newMonster.attack * 1.2) + 1;
+      } else if (lowerName.includes('grudento') || lowerName.includes('gosmento') || lowerName.includes('pedra') || lowerName.includes('couraçada')) {
+        newMonster.maxHp = Math.floor(newMonster.maxHp * 1.3);
+        newMonster.currentHp = newMonster.maxHp;
+      } else if (lowerName.includes('暗黒') || lowerName.includes('sombrio') || lowerName.includes('trevas') || lowerName.includes('furioso') || lowerName.includes('assassino')) {
+        newMonster.attack = Math.floor(newMonster.attack * 1.4) + 1;
+      } else if (lowerName.includes('rápido') || lowerName.includes('saltador') || lowerName.includes('voador') || lowerName.includes('espectral')) {
+        newMonster.attack = Math.floor(newMonster.attack * 1.2) + 1;
+      } else if (lowerName.includes('venenoso') || lowerName.includes('tóxico') || lowerName.includes('peçonha')) {
+        // Just thematic, maybe slight attack buff
+        newMonster.attack = Math.floor(newMonster.attack * 1.1) + 1;
+      }
+    }
+
     setMonster(newMonster);
     setMonsterIndex(index);
     setShowJpName(false);
@@ -166,8 +275,16 @@ export default function App() {
       if (statusMsg) {
         addLog(statusMsg, isPlayer ? 'text-ink-green font-bold' : 'text-ink-red font-bold');
         if (damageValue > 0) {
-          if (isPlayer) setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - damageValue) }));
-          else setMonster(m => m ? ({ ...m, currentHp: Math.max(0, m.currentHp - damageValue) }) : null);
+          if (isPlayer) {
+            setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - damageValue) }));
+            setPlayerShake(true);
+            setTimeout(() => setPlayerShake(false), 400);
+          }
+          else {
+            setMonster(m => m ? ({ ...m, currentHp: Math.max(0, m.currentHp - damageValue) }) : null);
+            setMonsterShake(true);
+            setTimeout(() => setMonsterShake(false), 400);
+          }
         }
         if (healValue > 0) {
           if (isPlayer) setPlayer(p => ({ ...p, hp: Math.min(p.maxHp, p.hp + healValue) }));
@@ -237,6 +354,8 @@ export default function App() {
 
       const damage = Math.max(1, Math.floor(atkPower + (Math.random() * 10 - 5)));
       setPlayer(p => ({ ...p, hp: Math.max(0, p.hp - damage) }));
+      setPlayerShake(true);
+      setTimeout(() => setPlayerShake(false), 400);
       addLog(`Golpe recebido! Perdeu ${damage} de vida!`, 'text-ink-red font-bold');
 
       if (usedSkill?.type === 'lifesteal') {
@@ -286,6 +405,8 @@ export default function App() {
       dmg = Math.floor(dmg);
 
       setMonster(m => m ? ({ ...m, currentHp: Math.max(0, m.currentHp - dmg) }) : null);
+      setMonsterShake(true);
+      setTimeout(() => setMonsterShake(false), 400);
       addLog(`Impacto brutal de ${dmg} dano!`, 'font-bold');
     } else if (spell.type === 'utility') {
       if (spell.effect === 'hint') {
@@ -434,6 +555,8 @@ export default function App() {
       if (Math.random() < missChance) {
         addLog(`O feitiço dissipou-se no ar e falhou!`, 'text-ink-dark/60 font-bold');
       } else {
+        setActiveEffect(finalSpell.element);
+        setTimeout(() => setActiveEffect(null), 1000);
         await executePlayerAction(finalSpell, isBonus);
       }
     }
@@ -506,15 +629,15 @@ export default function App() {
             </button>
         </div>
       ) : (
-      <div className="grimoire-page my-auto shrink-0 flex flex-col md:flex-row !p-0 max-w-6xl w-full relative">
+      <div className="grimoire-page my-auto shrink-0 flex flex-col md:flex-row !p-0 max-w-6xl w-full relative h-auto md:h-[700px] max-h-[95vh] md:max-h-[85vh]">
         <div className="grimoire-spine hidden md:block" />
         
         {/* LEFT PAGE - Battle Context */}
-        <div className="flex-1 p-6 md:p-12 flex flex-col relative z-20 w-full md:w-1/2">
+        <div className="flex-1 p-6 md:p-12 flex flex-col relative z-20 w-full md:w-1/2 overflow-y-auto md:overflow-hidden custom-scrollbar">
            {/* Header */}
            <div className="mb-6 border-b-2 border-ink-dark/30 pb-2 flex justify-between items-end">
              <div className="flex flex-col">
-               <h1 className="title-text text-3xl font-bold tracking-widest text-ink-dark uppercase">AVENTURAS DE {playerName || 'O ESTUDANTE'}</h1>
+               <h1 className="title-text text-xl md:text-2xl font-bold tracking-widest text-ink-dark uppercase">AVENTURAS DE {playerName || 'O ESTUDANTE'}</h1>
                <span className="jp-text text-sm font-bold text-ink-red tracking-widest italic opacity-80">戦いの記録</span>
              </div>
              <button 
@@ -542,50 +665,16 @@ export default function App() {
              </div>
            )}
 
-           {/* Player Details */}
-           <div className="mb-6 flex flex-col w-full">
-             <div className="flex justify-between items-end w-full mb-2">
-               <div className="flex flex-col">
-                 <span className="font-bold uppercase tracking-widest title-text text-xl md:text-2xl text-ink-dark/90 leading-tight">
-                   {playerName || 'O ESTUDANTE'}
-                 </span>
-                 <span className="font-bold uppercase tracking-widest title-text text-lg md:text-xl text-ink-dark/80">
-                   (NV. {player.level})
-                 </span>
-               </div>
-               <div className="flex flex-col items-end">
-                 <span className="font-bold uppercase tracking-widest title-text text-lg md:text-xl text-ink-dark/90 leading-tight">
-                   {player.hp}/{player.maxHp}
-                 </span>
-                 <span className="font-bold uppercase tracking-widest title-text text-sm text-ink-dark/80">
-                   HP
-                 </span>
-               </div>
-             </div>
-             
-             <div className="w-full">
-               <div className="hp-track mb-1.5 h-2.5 !bg-transparent border-b-4 border-ink-dark/80 rounded-none shadow-none">
-                 <div className="hp-fill bg-ink-dark/80" style={{ width: `${(player.hp / player.maxHp) * 100}%`, height: '100%', borderRadius: 0 }}></div>
-               </div>
-               <div className="h-1 border border-ink-dark/30 mt-1 p-[1px]">
-                 <div className="h-full bg-ink-dark/40" style={{ width: `${(player.xp / player.maxXp) * 100}%`, borderRadius: 0 }}></div>
-               </div>
-             </div>
-             
-             {player.statuses.length > 0 && (
-               <div className="flex gap-2 mt-3 flex-wrap">
-                 {player.statuses.map(s => (
-                   <span key={s.type} className="text-xl relative" title={STATUS_NAMES_PT[s.type]}>
-                     {STATUS_ICONS[s.type]}
-                     <span className="absolute -bottom-2 -right-2 text-[10px] font-bold bg-[#c1af95] border border-ink-dark/30 rounded-full w-4 h-4 flex items-center justify-center">{s.duration}</span>
-                   </span>
-                 ))}
-               </div>
-             )}
-           </div>
+           {/* Monster Area */}
+           <div className="flex-1 flex flex-col items-center justify-center relative min-h-[160px] md:min-h-[200px]">
+             <AnimatePresence>
+               {activeEffect && (
+                 <div key={activeEffect}>
+                   <SpellEffectOverlay element={activeEffect} />
+                 </div>
+               )}
+             </AnimatePresence>
 
-           {/* Monster Details */}
-           <div className="flex-1 flex flex-col items-center justify-center mt-2 relative min-h-[200px]">
              {monsterSpeech && (
                 <div className="speech-bubble speech-show">
                   <span className="relative z-10">{monsterSpeech}</span>
@@ -596,56 +685,97 @@ export default function App() {
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 text-5xl text-ink-dark animate-bounce title-text opacity-50">!</div>
              )}
              
-             <div className={cn("idle-float text-[80px] md:text-[100px] transition-transform drop-shadow-xl saturate-50", isAnimating && "anim-attack-m")}>
+             <div className={cn("idle-float text-[100px] md:text-[120px] transition-transform drop-shadow-xl saturate-50", isAnimating && "anim-attack-m", monsterShake && "anim-damage")}>
                 {monster?.emoji || '❔'}
              </div>
              
-             <div className="w-full mt-8 flex flex-col">
-               <div className="flex justify-between items-end mb-1">
-                 <div className="relative group inline-block text-left z-40">
-                    <span 
-                      onClick={() => setShowJpName(!showJpName)}
-                      className={cn("handwriting text-3xl font-black cursor-pointer border-b border-dashed border-ink-dark/30 tracking-wide uppercase", monster?.color || "text-ink-dark")}
-                    >
-                      {monster?.variationName || monster?.name || '---'}
-                    </span>
-                    {showJpName && monster && (
-                      <div className="jp-text absolute bottom-[120%] left-0 text-sm mb-2 bg-[#d3c4ad] border border-ink-dark/30 px-3 py-2 shadow-md whitespace-nowrap z-50 font-bold opacity-90 flex flex-col gap-1">
-                        <span>{monster.romaji} / {monster.kanji !== monster.kana ? monster.kanji : monster.kana}</span>
-                        {monster.variationTranslation && (
-                          <span className="text-xs uppercase title-text border-t border-ink-dark/20 pt-1 mt-1">
-                            {monster.variationTranslation}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                 </div>
-                 <span className="font-bold text-sm tracking-widest handwriting text-2xl text-ink-dark/80">
-                   {monster ? `${monster.currentHp}/${monster.maxHp}` : '0/0'} HP
-                 </span>
-               </div>
-               <div className="hp-track mb-2">
-                 <div className="hp-fill hp-monster" style={{ width: monster ? `${(monster.currentHp / monster.maxHp) * 100}%` : '0%' }}></div>
-               </div>
-               
-               {monster?.statuses && monster.statuses.length > 0 && (
-                 <div className="flex gap-2 mt-2 flex-wrap">
-                   {monster.statuses.map(s => (
-                     <span key={s.type} className="text-xl relative" title={STATUS_NAMES_PT[s.type]}>
-                       {STATUS_ICONS[s.type]}
-                       <span className="absolute -bottom-2 -right-2 text-[10px] font-bold bg-[#c1af95] border border-ink-dark/30 rounded-full w-4 h-4 flex items-center justify-center">{s.duration}</span>
+             <div className="w-full mt-6 flex flex-col">
+                <div className="flex justify-between items-end mb-2">
+                  <div className="relative group inline-block text-left z-40">
+                     <span 
+                       onClick={() => setShowJpName(!showJpName)}
+                       className={cn("handwriting text-2xl md:text-3xl font-black cursor-pointer border-b border-dashed border-ink-dark/30 tracking-wide uppercase", monster?.color || "text-ink-dark")}
+                     >
+                       {monster?.variationName || monster?.name || '---'}
                      </span>
-                   ))}
-                 </div>
-               )}
+                     {showJpName && monster && (
+                       <div className="jp-text absolute bottom-[120%] left-0 text-sm mb-2 bg-[#d3c4ad] border border-ink-dark/30 px-3 py-2 shadow-md whitespace-nowrap z-50 font-bold opacity-90 flex flex-col gap-1">
+                         <span>{monster.romaji} / {monster.kanji !== monster.kana ? monster.kanji : monster.kana}</span>
+                         {monster.variationTranslation && (
+                           <span className="text-xs uppercase title-text border-t border-ink-dark/20 pt-1 mt-1">
+                             {monster.variationTranslation}
+                           </span>
+                         )}
+                       </div>
+                     )}
+                  </div>
+                </div>
+                
+                <div className="mt-4 w-full">
+                  <HPBar 
+                    current={monster?.currentHp || 0} 
+                    max={monster?.maxHp || 1} 
+                    isMonster 
+                    colorClass={monster?.color ? monster.color.replace('text-', 'bg-') : undefined} 
+                  />
+                </div>
+
+                {monster?.statuses && monster.statuses.length > 0 && (
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {monster.statuses.map(s => (
+                      <span key={s.type} className="text-xl relative" title={STATUS_NAMES_PT[s.type]}>
+                        {STATUS_ICONS[s.type]}
+                        <span className="absolute -bottom-2 -right-2 text-[10px] font-bold bg-[#c1af95] border border-ink-dark/30 rounded-full w-4 h-4 flex items-center justify-center">{s.duration}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
              </div>
            </div>
+
+
         </div>
 
         {/* RIGHT PAGE - Action Context */}
-        <div className="flex-1 p-6 md:p-12 flex flex-col relative z-20 w-full md:w-1/2 border-t-2 border-ink-dark/30 md:border-t-0 md:border-l-2">
+        <div className="flex-1 p-4 md:p-12 flex flex-col w-full md:w-1/2 border-t-2 border-ink-dark/30 md:border-t-0 md:border-l-2 h-full min-h-0 overflow-y-auto md:overflow-hidden custom-scrollbar">
+            {/* Player Info Area */}
+            <div className={cn("mb-8 pb-4 border-b-2 border-ink-dark/20 flex flex-col w-full transition-all", playerShake && "anim-damage")}>
+              <div className="flex justify-between items-end w-full mb-4">
+                <div className="flex flex-col">
+                  <span className="font-bold uppercase tracking-widest title-text text-base text-ink-dark/90 leading-tight">
+                    LV.{player.level} {playerName || 'O ESTUDANTE'}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="font-bold title-text text-[10px] text-ink-dark/60 uppercase text-right">Progresso</span>
+                  <div className="w-20 h-1 border border-ink-dark/30 mt-1 p-[0.5px]">
+                    <div className="h-full bg-ink-dark/40" style={{ width: `${(player.xp / player.maxXp) * 100}%`, borderRadius: 0 }}></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="w-full">
+                <HPBar 
+                    current={player.hp} 
+                    max={player.maxHp} 
+                    colorClass="bg-ink-dark/90" 
+                />
+              </div>
+              
+              {player.statuses.length > 0 && (
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {player.statuses.map(s => (
+                    <span key={s.type} className="text-xl relative" title={STATUS_NAMES_PT[s.type]}>
+                      {STATUS_ICONS[s.type]}
+                      <span className="absolute -bottom-2 -right-2 text-[10px] font-bold bg-[#c1af95] border border-ink-dark/30 rounded-full w-4 h-4 flex items-center justify-center">{s.duration}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Input Form */}
-            <div className="flex flex-col gap-6" ref={sparkContainerRef}>
+            <div className="flex flex-col gap-6 mt-auto" ref={sparkContainerRef}>
                <div className="flex flex-col relative">
                   <label htmlFor="answer-input" className="text-sm font-bold mb-2 uppercase tracking-widest title-text opacity-70">Escrever Encantamento</label>
                   <input 
@@ -695,10 +825,10 @@ export default function App() {
                </div>
             </div>
             
-            {/* Logs Area */}
-            <div className="flex-1 mt-8 pt-4 border-t-2 border-ink-dark/20 flex flex-col min-h-[120px]">
-               <h3 className="title-text text-sm font-bold uppercase tracking-widest opacity-60 mb-2">Acontecimentos</h3>
-               <div className="flex-1 relative">
+            {/* Logs Area (STRICT HEIGHT AND NO STRETCH) */}
+            <div className="mt-4 md:mt-auto pt-4 border-t-2 border-ink-dark/20 flex flex-col min-h-[160px] md:min-h-0 md:h-[220px] overflow-hidden flex-shrink-0">
+               <h3 className="title-text text-xs font-bold uppercase tracking-widest opacity-50 mb-2 truncate">Registro de Batalha (戦いの記録)</h3>
+               <div className="flex-1 min-h-0 relative bg-ink-dark/5 border border-ink-dark/10 p-2 overflow-hidden flex-shrink-0 rounded shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
                  <BattleLog logs={logs} />
                </div>
             </div>

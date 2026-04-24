@@ -179,8 +179,8 @@
   }
 
   .log-entry {
-    @apply py-1 border-b border-ink-dark/10 text-lg md:text-2xl text-ink-dark/80 tracking-wide;
-    font-family: 'Caveat', cursive;
+    @apply py-2 px-1 border-b border-ink-dark/[0.05] text-sm md:text-base text-ink-dark/80 tracking-wide leading-relaxed;
+    font-family: "Cutive Mono", monospace;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
