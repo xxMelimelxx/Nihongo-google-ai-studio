@@ -17,11 +17,11 @@ export default function BattleLog({ logs }: BattleLogProps) {
   return (
     <div 
       ref={logRef}
-      className="flex-1 bg-black/5 border-l-4 border-ink-red p-3 h-32 overflow-y-auto flex flex-col gap-2 relative text-ink-dark font-bold text-sm leading-relaxed"
+      className="absolute inset-0 custom-scrollbar overflow-y-auto flex flex-col relative px-2 text-ink-dark shadow-inner bg-transparent"
     >
       {logs.map((log) => (
-        <div key={log.id} className={log.colorClass}>
-          {`> ${log.message}`}
+        <div key={log.id} className={`log-entry ${log.colorClass}`}>
+          {log.message}
         </div>
       ))}
     </div>

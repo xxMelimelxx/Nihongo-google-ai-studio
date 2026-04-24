@@ -1,7 +1,8 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Special+Elite&family=Cutive+Mono&family=Noto+Serif+JP:wght@400;700;900&display=swap');
 
 @theme {
-  --color-ink-dark: #2c1b18;
+  --color-ink-dark: #2a231d;
   --color-ink-red: #8b0000;
   --color-ink-green: #064e3b;
   --color-ink-blue: #1e3a8a;
@@ -9,8 +10,8 @@
   --color-parchment-dark: #e3d5b8;
   --color-gold: #b8860b;
 
-  --font-merriweather: "Merriweather", serif;
-  --font-playfair: "Playfair Display", serif;
+  --font-merriweather: "Cutive Mono", monospace;
+  --font-playfair: "Special Elite", cursive;
   --font-noto-jp: "Noto Serif JP", serif;
 
   @keyframes sparkle {
@@ -91,24 +92,40 @@
 
 @layer base {
   body {
-    @apply bg-[#1a0f14] text-ink-dark font-merriweather selection:bg-ink-red selection:text-white antialiased;
-    background-image: 
-      radial-gradient(circle at 15% 30%, rgba(139, 0, 0, 0.15) 0%, transparent 40%),
-      radial-gradient(circle at 85% 70%, rgba(75, 0, 130, 0.15) 0%, transparent 40%);
+    @apply text-ink-dark font-merriweather selection:bg-ink-dark/20 selection:text-ink-dark antialiased m-0 overflow-hidden;
+    background-color: #0a0a0a;
   }
 
   .jp-text { font-family: "Noto Serif JP", serif; }
-  .title-text { font-family: "Playfair Display", serif; }
+  .title-text { font-family: "Special Elite", cursive; }
+  .handwriting { font-family: "Caveat", cursive; }
 }
 
 @layer components {
   .grimoire-page {
-    @apply bg-parchment rounded-[4px] border-2 border-[#5a3a29] relative p-8;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" opacity="0.04"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>');
-    box-shadow: 
-      inset 0 0 60px rgba(139, 69, 19, 0.15),
-      0 25px 50px -12px rgba(0, 0, 0, 0.8),
-      0 0 0 10px rgba(44, 27, 24, 0.4);
+    @apply w-full max-w-[1200px] bg-parchment rounded-xl relative flex flex-col p-6 md:p-12 shadow-[0_30px_60px_rgba(0,0,0,1)];
+    min-height: 90vh;
+    background-image: 
+      radial-gradient(circle at center, transparent 40%, rgba(30,20,10,0.5) 100%),
+      url('https://www.transparenttextures.com/patterns/old-wall.png');
+    border: 2px solid #1a1410;
+  }
+
+  .grimoire-spine {
+    @apply absolute top-0 bottom-0 left-[50%] -translate-x-[50%] w-12 md:w-16 pointer-events-none z-10;
+    background: linear-gradient(to right, 
+      rgba(0,0,0,0) 0%, 
+      rgba(40,25,15,0.2) 20%, 
+      rgba(30,15,5,0.6) 45%, 
+      rgba(20,10,0,0.8) 50%, 
+      rgba(30,15,5,0.6) 55%, 
+      rgba(40,25,15,0.2) 80%, 
+      rgba(0,0,0,0) 100%
+    );
+  }
+
+  .scroll-roll-top, .scroll-roll-bottom, .grimoire-edge-left, .grimoire-edge-right, .decoration-corner, .corner-tl, .corner-tr, .corner-bl, .corner-br {
+    @apply hidden;
   }
 
   .grimoire-page::before {
@@ -116,83 +133,67 @@
     @apply absolute top-[8px] left-[8px] right-[8px] bottom-[8px] border border-ink-dark/30 pointer-events-none;
   }
 
-  .grimoire-box {
-    @apply border-2 border-ink-dark bg-parchment/60 rounded-[2px] p-4 relative;
-    box-shadow: inset 0 0 10px rgba(139, 69, 19, 0.1);
-  }
-
   .grimoire-btn {
-    @apply border-2 border-ink-dark bg-gradient-to-b from-parchment to-parchment-dark text-ink-dark font-playfair font-extrabold text-lg cursor-pointer transition-all text-center px-6 py-2 uppercase tracking-wider rounded-[2px] active:translate-y-[2px] active:shadow-none;
-    box-shadow: 2px 3px 0px rgba(44, 27, 24, 0.8);
-  }
-
-  .grimoire-btn:hover {
-    @apply from-[#fff8e7] to-parchment -translate-y-[1px];
-    box-shadow: 2px 4px 0px rgba(44, 27, 24, 0.8);
+    @apply border border-ink-dark/50 bg-transparent text-ink-dark font-bold text-sm md:text-lg cursor-pointer transition-all text-center px-4 py-2 uppercase tracking-widest hover:bg-ink-dark/10 hover:shadow-inner active:bg-ink-dark/20;
+    font-family: 'Special Elite', cursive;
   }
 
   .btn-crimson {
-    @apply from-[#7f1d1d] to-[#450a0a] text-parchment border-[#2c0404];
-  }
-
-  .btn-crimson:hover {
-    @apply from-[#991b1b] to-[#7f1d1d] text-white;
+    @apply border-ink-red/50 text-ink-red hover:bg-ink-red/10;
   }
 
   .grimoire-input {
-    @apply bg-transparent border-none border-b-2 border-ink-dark text-ink-dark font-merriweather text-2xl font-black outline-none text-center w-full transition-all p-2 tracking-[2px] focus:border-b-ink-red focus:bg-ink-red/[0.03];
+    @apply bg-transparent border-none border-b-2 border-ink-dark/50 text-ink-dark text-2xl md:text-3xl font-bold outline-none text-center w-full transition-all p-2 tracking-widest focus:border-b-ink-dark focus:bg-ink-dark/5;
+    font-family: 'Special Elite', cursive;
   }
 
   .grimoire-input::placeholder {
-    @apply text-[#a89f91] font-normal italic tracking-normal;
+    @apply text-ink-dark/30 font-normal tracking-wider;
+    font-family: 'Special Elite', cursive;
   }
 
   .hp-track {
-    @apply border-2 border-ink-dark bg-black/10 h-4 relative overflow-hidden w-full rounded-[2px];
-    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    @apply border border-ink-dark/50 bg-transparent h-2 relative overflow-hidden w-full;
   }
 
   .hp-fill {
     @apply h-full transition-[width] duration-500 ease-out relative;
   }
 
-  .hp-fill::after {
-    content: '';
-    @apply absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-white/40 to-transparent;
-  }
-
-  .hp-player { @apply bg-gradient-to-r from-[#166534] to-[#22c55e]; }
-  .hp-monster { @apply bg-gradient-to-r from-[#7f1d1d] to-[#ef4444]; }
-  .xp-player-bar { @apply bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6]; }
+  .hp-player { @apply bg-ink-dark/80; }
+  .hp-monster { @apply bg-ink-dark/80; }
+  .xp-player-bar { @apply bg-ink-dark/40; }
 
   .magic-frame {
-    @apply bg-gradient-to-b from-[#1e1b4b] to-[#020617] border-[4px] border-ink-dark relative overflow-hidden rounded-[4px] mb-6;
-    box-shadow: inset 0 0 30px rgba(0,0,0,1), 0 10px 20px rgba(0,0,0,0.3);
-  }
-
-  .magic-frame::before {
-    content: '';
-    @apply absolute -top-5 right-[10%] w-[120px] h-[120px] bg-[#fef08a] rounded-full opacity-80 pointer-events-none;
-    box-shadow: 0 0 60px #fef08a, 0 0 120px rgba(254, 240, 138, 0.4);
+    @apply relative border-t-2 border-b-2 border-ink-dark/30 py-6 mb-6;
   }
 
   .speech-bubble {
-    @apply absolute bottom-[110%] left-1/2 -translate-x-1/2 translate-y-[10px] bg-parchment text-ink-dark px-5 py-3 border-2 border-ink-dark rounded-[4px] font-merriweather text-lg font-black text-center min-w-[160px] max-w-[260px] w-max z-[100] opacity-0 pointer-events-none transition-all duration-300 leading-tight;
-    box-shadow: 4px 6px 15px rgba(0,0,0,0.6);
-  }
-
-  .speech-bubble::after {
-    content: '';
-    @apply absolute -bottom-[10px] left-1/2 -translate-x-1/2 border-x-[10px] border-x-transparent border-t-[10px] border-t-ink-dark;
-  }
-
-  .speech-bubble::before {
-    content: '';
-    @apply absolute -bottom-[6px] left-1/2 -translate-x-1/2 border-x-[8px] border-x-transparent border-t-[8px] border-t-parchment z-[1];
+    @apply absolute bottom-[115%] left-1/2 -translate-x-1/2 translate-y-[10px] text-ink-dark px-4 py-2 border border-ink-dark/40 text-base md:text-xl font-bold text-center min-w-[200px] max-w-[320px] w-max z-[100] opacity-0 pointer-events-none transition-all duration-300 shadow-sm bg-parchment;
+    background-image: url('https://www.transparenttextures.com/patterns/old-wall.png');
+    font-family: 'Special Elite', cursive;
   }
 
   .speech-show {
     @apply opacity-100 translate-y-0;
+  }
+
+  .log-entry {
+    @apply py-1 border-b border-ink-dark/10 text-lg md:text-2xl text-ink-dark/80 tracking-wide;
+    font-family: 'Caveat', cursive;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 12px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-black/5 rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-[#5a3a29] rounded-full border-2 border-parchment;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-[#3a2010];
   }
 
   /* Animations Utility */

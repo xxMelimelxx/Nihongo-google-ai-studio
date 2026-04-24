@@ -470,171 +470,181 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="grimoire-page flex flex-col gap-2 max-w-4xl w-full">
+    <div className="min-h-screen flex items-center justify-center p-2 md:p-8 overflow-y-auto">
+      <div className="grimoire-page flex flex-col md:flex-row !p-0 max-w-6xl w-full relative">
+        <div className="grimoire-spine hidden md:block" />
         
-        {/* Header */}
-        <div className="relative flex justify-between items-end border-b-2 border-ink-dark pb-3 mb-4">
-          <div>
-            <h1 className="title-text text-3xl md:text-5xl text-ink-dark font-black leading-none tracking-wide">Nihongo Quest</h1>
-            <span className="jp-text text-sm md:text-base font-bold text-ink-red tracking-widest mt-1 block">日本語クエスト</span>
-          </div>
-          <button 
-            onClick={() => setIsAdminOpen(!isAdminOpen)} 
-            className="grimoire-btn text-[10px] py-1 px-3 absolute top-0 right-0 h-auto"
-          >
-            Admin
-          </button>
-        </div>
+        {/* LEFT PAGE - Battle Context */}
+        <div className="flex-1 p-6 md:p-12 flex flex-col relative z-20 w-full md:w-1/2">
+           {/* Header */}
+           <div className="mb-6 border-b-2 border-ink-dark/30 pb-2 flex justify-between items-end">
+             <div className="flex flex-col">
+               <h1 className="title-text text-3xl font-bold tracking-widest text-ink-dark">DIÁRIO DE B.</h1>
+               <span className="jp-text text-sm font-bold text-ink-red tracking-widest italic opacity-80">戦いの記録</span>
+             </div>
+             <button 
+                onClick={() => setIsAdminOpen(!isAdminOpen)} 
+                className="text-[12px] opacity-20 hover:opacity-100 uppercase title-text transition-opacity"
+             >
+                ⚙
+             </button>
+           </div>
+           
+           {/* Admin Console */}
+           {isAdminOpen && (
+             <div className="mb-4 z-50 bg-[#e0c9a3] p-4 border border-ink-dark/30 shadow-inner">
+               <div className="text-sm font-bold border-b border-ink-dark pb-2 flex justify-between mb-3 text-ink-red">
+                   <span className="title-text uppercase tracking-widest">Ferramentas Sombrias</span>
+                   <button onClick={() => setIsAdminOpen(false)} className="hover:text-red-900 text-lg leading-none">X</button>
+               </div>
+               <div className="flex flex-wrap gap-3 text-xs font-bold uppercase title-text">
+                   <button onClick={() => setPlayer(p => ({ ...p, level: Math.min(40, p.level + 1) }))} className="hover:text-ink-red underline">+1 Nível</button>
+                   <button onClick={() => setPlayer(p => ({ ...p, xp: p.xp + 1000 }))} className="hover:text-ink-red underline">+1000 XP</button>
+                   <button onClick={() => setPlayer(p => ({ ...p, hp: p.maxHp }))} className="hover:text-green-700 underline">Curar HP</button>
+                   <button onClick={() => setSpellCooldowns({})} className="hover:text-purple-700 underline">0 Recargas</button>
+                   <button onClick={() => setMonster(m => m ? ({ ...m, currentHp: 0 }) : null)} className="hover:text-red-700 underline">Kill Monster</button>
+               </div>
+             </div>
+           )}
 
-        {/* Admin Console */}
-        {isAdminOpen && (
-          <div className="grimoire-box mb-4 z-50 bg-[#e0c9a3]">
-            <div className="text-sm font-bold border-b border-ink-dark pb-2 flex justify-between mb-3 text-ink-red">
-                <span className="title-text uppercase tracking-widest">Ferramentas de Criação</span>
-                <button onClick={() => setIsAdminOpen(false)} className="hover:text-red-900 text-lg leading-none">✖</button>
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs font-bold">
-                <button onClick={() => setPlayer(p => ({ ...p, level: Math.min(40, p.level + 1) }))} className="hover:text-ink-red underline">+1 Nível</button> |
-                <button onClick={() => setPlayer(p => ({ ...p, xp: p.xp + 1000 }))} className="hover:text-ink-red underline">+1000 XP</button> |
-                <button onClick={() => setPlayer(p => ({ ...p, hp: p.maxHp }))} className="hover:text-green-700 underline">Curar HP</button> |
-                <button onClick={() => setSpellCooldowns({})} className="hover:text-purple-700 underline">Zerar Recargas</button> |
-                <button onClick={() => setMonster(m => m ? ({ ...m, currentHp: 0 }) : null)} className="hover:text-red-700 underline">Kill Monster</button>
-            </div>
-          </div>
-        )}
+           {/* Player Details */}
+           <div className="mb-6 flex flex-col">
+             <div className="flex justify-between items-end mb-1">
+               <span className="font-bold uppercase tracking-widest handwriting text-2xl text-ink-dark/80">O Estudante (Nv.{player.level})</span>
+               <span className="font-bold text-sm tracking-widest handwriting text-2xl text-ink-dark/80">{player.hp}/{player.maxHp} HP</span>
+             </div>
+             <div className="hp-track mb-2">
+               <div className="hp-fill hp-player" style={{ width: `${(player.hp / player.maxHp) * 100}%` }}></div>
+             </div>
+             <div className="hp-track h-1 opacity-50">
+               <div className="hp-fill xp-player-bar" style={{ width: `${(player.xp / player.maxXp) * 100}%` }}></div>
+             </div>
+             
+             {player.statuses.length > 0 && (
+               <div className="flex gap-2 mt-3 flex-wrap">
+                 {player.statuses.map(s => (
+                   <span key={s.type} className="text-xl relative" title={STATUS_NAMES_PT[s.type]}>
+                     {STATUS_ICONS[s.type]}
+                     <span className="absolute -bottom-2 -right-2 text-[10px] font-bold bg-[#c1af95] border border-ink-dark/30 rounded-full w-4 h-4 flex items-center justify-center">{s.duration}</span>
+                   </span>
+                 ))}
+               </div>
+             )}
+           </div>
 
-        {/* Battle Scene */}
-        <div className="magic-frame p-6 md:p-8 flex justify-between items-end min-h-[260px]">
-          {/* Player */}
-          <div className="flex flex-col items-center z-10 w-2/5">
-            <div className="w-full mb-3">
-              <div className="flex justify-between items-end mb-1 leading-none text-white drop-shadow-md">
-                <span className="text-xs md:text-sm font-bold title-text tracking-wider">Herói <span className="text-[10px]">(Nv.{player.level})</span></span>
-                <span className="text-[10px] md:text-xs font-bold">{player.hp}/{player.maxHp}</span>
-              </div>
-              <div className="hp-track mb-1.5">
-                <div className="hp-fill hp-player" style={{ width: `${(player.hp / player.maxHp) * 100}%` }}></div>
-              </div>
-              <div className="hp-track h-2">
-                <div className="hp-fill xp-player-bar" style={{ width: `${(player.xp / player.maxXp) * 100}%` }}></div>
-              </div>
-              <div id="player-status" className="flex gap-1 justify-center mt-2 h-6">
-                {player.statuses.map(s => (
-                  <span key={s.type} className="relative inline-block mx-1 text-lg" title={STATUS_NAMES_PT[s.type]}>
-                    {STATUS_ICONS[s.type]}
-                    <span className="absolute -bottom-1 -right-1 text-[8px] font-sans font-bold bg-parchment rounded-full w-4 h-4 flex items-center justify-center text-ink-dark border border-ink-dark shadow-sm">{s.duration}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className={cn("idle-float text-7xl md:text-8xl transition-transform grayscale-[0.2] drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]", isAnimating && "anim-attack-p")}>🧙‍♂️</div>
-          </div>
-
-          <div className="title-text text-3xl md:text-5xl text-white font-black z-0 pb-12 opacity-30 italic drop-shadow-lg">VS</div>
-
-          {/* Monster */}
-          <div className="flex flex-col items-center z-10 w-2/5 relative">
-            {monsterSpeech && (
-              <div className="speech-bubble speech-show">
-                <span>{monsterSpeech}</span>
-              </div>
-            )}
-
-            <div className="w-full mb-3 text-center relative">
-              {monster?.bonusActive && (
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 text-5xl text-yellow-400 animate-bounce z-30 font-black drop-shadow-md">!</div>
-              )}
-              
-              <div className="flex justify-between items-end mb-1 leading-none text-white drop-shadow-md mt-6">
-                <div className="relative group inline-block text-left z-40">
-                  <span 
-                    onClick={() => setShowJpName(!showJpName)}
-                    className={cn("text-xs md:text-sm font-bold cursor-pointer border-b border-dashed title-text tracking-wider", monster?.color || "text-red-300")}
-                  >
-                    {monster?.name || '---'}
-                  </span>
-                  {showJpName && monster && (
-                    <div className="jp-text absolute bottom-full left-1/2 -translate-x-1/2 text-[11px] mb-2 bg-black border border-gray-500 px-3 py-1.5 rounded shadow-lg whitespace-nowrap z-50 font-bold text-yellow-300 tracking-widest">
-                      {monster.romaji} / {monster.kanji !== monster.kana ? monster.kanji : monster.kana}
-                    </div>
-                  )}
+           {/* Monster Details */}
+           <div className="flex-1 flex flex-col items-center justify-center mt-4 pt-12 relative min-h-[250px]">
+             {monsterSpeech && (
+                <div className="speech-bubble speech-show">
+                  <span className="relative z-10">{monsterSpeech}</span>
                 </div>
-                <span className="text-[10px] md:text-xs font-bold">
-                  {monster ? `${monster.currentHp}/${monster.maxHp}` : '0/0'}
-                </span>
-              </div>
-              <div className="hp-track mb-1.5">
-                <div className="hp-fill hp-monster" style={{ width: monster ? `${(monster.currentHp / monster.maxHp) * 100}%` : '0%' }}></div>
-              </div>
-              <div id="monster-status" className="flex gap-1 justify-center mt-2 h-6">
-                {monster?.statuses.map(s => (
-                  <span key={s.type} className="relative inline-block mx-1 text-lg" title={STATUS_NAMES_PT[s.type]}>
-                    {STATUS_ICONS[s.type]}
-                    <span className="absolute -bottom-1 -right-1 text-[8px] font-sans font-bold bg-parchment rounded-full w-4 h-4 flex items-center justify-center text-ink-dark border border-ink-dark shadow-sm">{s.duration}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className={cn("idle-float text-7xl md:text-8xl transition-transform mt-1 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]", isAnimating && "anim-attack-m")}>
-              {monster?.emoji || '❔'}
-            </div>
-          </div>
+             )}
+             
+             {monster?.bonusActive && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 text-5xl text-ink-dark animate-bounce title-text opacity-50">!</div>
+             )}
+             
+             <div className={cn("idle-float text-[100px] transition-transform drop-shadow-xl saturate-50", isAnimating && "anim-attack-m")}>
+                {monster?.emoji || '❔'}
+             </div>
+             
+             <div className="w-full mt-8 flex flex-col">
+               <div className="flex justify-between items-end mb-1">
+                 <div className="relative group inline-block text-left z-40">
+                    <span 
+                      onClick={() => setShowJpName(!showJpName)}
+                      className={cn("handwriting text-3xl font-black cursor-pointer border-b border-dashed border-ink-dark/30 tracking-wide uppercase", monster?.color || "text-ink-dark")}
+                    >
+                      {monster?.name || '---'}
+                    </span>
+                    {showJpName && monster && (
+                      <div className="jp-text absolute bottom-full left-0 text-sm mb-2 bg-[#d3c4ad] border border-ink-dark/30 px-3 py-1 shadow-md whitespace-nowrap z-50 font-bold opacity-80">
+                        {monster.romaji} / {monster.kanji !== monster.kana ? monster.kanji : monster.kana}
+                      </div>
+                    )}
+                 </div>
+                 <span className="font-bold text-sm tracking-widest handwriting text-2xl text-ink-dark/80">
+                   {monster ? `${monster.currentHp}/${monster.maxHp}` : '0/0'} HP
+                 </span>
+               </div>
+               <div className="hp-track mb-2">
+                 <div className="hp-fill hp-monster" style={{ width: monster ? `${(monster.currentHp / monster.maxHp) * 100}%` : '0%' }}></div>
+               </div>
+               
+               {monster?.statuses && monster.statuses.length > 0 && (
+                 <div className="flex gap-2 mt-2 flex-wrap">
+                   {monster.statuses.map(s => (
+                     <span key={s.type} className="text-xl relative" title={STATUS_NAMES_PT[s.type]}>
+                       {STATUS_ICONS[s.type]}
+                       <span className="absolute -bottom-2 -right-2 text-[10px] font-bold bg-[#c1af95] border border-ink-dark/30 rounded-full w-4 h-4 flex items-center justify-center">{s.duration}</span>
+                     </span>
+                   ))}
+                 </div>
+               )}
+             </div>
+           </div>
         </div>
 
-        {/* Action Panel */}
-        <div className="flex flex-col gap-4 relative z-20" ref={sparkContainerRef}>
-          <div className="flex flex-col md:flex-row gap-5 items-center w-full">
-            <div className="flex-1 w-full bg-white/40 p-3 rounded border border-ink-dark/10">
-              <label htmlFor="answer-input" className="text-xs text-ink-red font-bold mb-1 block uppercase tracking-widest title-text">Ação (Romaji ou Kana):</label>
-              <input 
-                ref={inputRef}
-                type="text" 
-                id="answer-input" 
-                autoComplete="off" 
-                placeholder="Escreva o feitiço..." 
-                className="grimoire-input"
-                value={inputVal}
-                onChange={(e) => {
-                  setInputVal(e.target.value);
-                  createSparkle(e);
-                }}
-                onKeyPress={(e) => e.key === 'Enter' && submitAnswer()}
-                disabled={isAnimating}
-              />
+        {/* RIGHT PAGE - Action Context */}
+        <div className="flex-1 p-6 md:p-12 flex flex-col relative z-20 w-full md:w-1/2 border-t-2 border-ink-dark/30 md:border-t-0 md:border-l-2">
+            {/* Input Form */}
+            <div className="flex flex-col gap-6" ref={sparkContainerRef}>
+               <div className="flex flex-col relative">
+                  <label htmlFor="answer-input" className="text-sm font-bold mb-2 uppercase tracking-widest title-text opacity-70">Escrever Encantamento</label>
+                  <input 
+                    ref={inputRef}
+                    type="text" 
+                    id="answer-input" 
+                    autoComplete="off" 
+                    placeholder="..." 
+                    className="grimoire-input"
+                    value={inputVal}
+                    onChange={(e) => {
+                      setInputVal(e.target.value);
+                      createSparkle(e);
+                    }}
+                    onKeyPress={(e) => e.key === 'Enter' && submitAnswer()}
+                    disabled={isAnimating}
+                  />
+               </div>
+               
+               <div className="flex gap-4">
+                  <button 
+                    onClick={submitAnswer}
+                    disabled={isAnimating || !inputVal}
+                    className="grimoire-btn btn-crimson text-sm md:text-base py-3 flex-1 disabled:opacity-50 tracking-[4px]"
+                  >
+                    CONJURAR
+                  </button>
+                  <button 
+                    onClick={() => setShowSpellbook(true)}
+                    className="grimoire-btn text-sm py-3 px-6 md:px-8 tracking-[4px]"
+                  >
+                    ANOTAÇÕES
+                  </button>
+               </div>
+               
+               {/* Cooldowns summary */}
+               <div className="flex flex-wrap gap-2 items-center">
+                  {VOCABULARY.filter(v => player.level >= v.unlockLevel && (spellCooldowns[v.pt] || 0) > 0).length === 0 ? (
+                    <span className="text-ink-dark/50 italic text-sm title-text">A mente está limpa. (S/ Recargas)</span>
+                  ) : (
+                    VOCABULARY.filter(v => player.level >= v.unlockLevel && (spellCooldowns[v.pt] || 0) > 0).map(v => (
+                       <span key={v.pt} className="border border-ink-dark/30 text-ink-dark px-2 py-1 text-xs font-bold title-text uppercase shadow-sm">
+                         {v.pt} <span className="opacity-70 ml-1">({spellCooldowns[v.pt]}t)</span>
+                       </span>
+                    ))
+                  )}
+               </div>
             </div>
             
-            <div className="flex gap-3 w-full md:w-auto justify-center">
-              <button 
-                onClick={submitAnswer}
-                disabled={isAnimating || !inputVal}
-                className="grimoire-btn btn-crimson text-sm md:text-base py-4 flex-1 md:flex-none disabled:opacity-50"
-              >
-                Conjurar
-              </button>
-              <button 
-                onClick={() => setShowSpellbook(true)}
-                className="grimoire-btn text-sm md:text-base py-4 flex items-center justify-center gap-2 flex-1 md:flex-none"
-              >
-                <span>📖</span> <span className="hidden sm:inline">Grimório</span>
-              </button>
+            {/* Logs Area */}
+            <div className="flex-1 mt-8 pt-4 border-t-2 border-ink-dark/20 flex flex-col h-[200px] md:h-auto">
+               <h3 className="title-text text-sm font-bold uppercase tracking-widest opacity-60 mb-2">Acontecimentos</h3>
+               <div className="flex-1 min-h-[150px] relative">
+                 <BattleLog logs={logs} />
+               </div>
             </div>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-4 mt-2">
-            <div className="flex-1 p-3 bg-black/5 border border-black/10 rounded min-h-[50px] flex flex-wrap gap-2 items-center shadow-inner">
-              {VOCABULARY.filter(v => player.level >= v.unlockLevel && (spellCooldowns[v.pt] || 0) > 0).length === 0 ? (
-                <span className="text-ink-dark/60 italic text-xs font-bold">As energias estão serenas. Sem recargas.</span>
-              ) : (
-                VOCABULARY.filter(v => player.level >= v.unlockLevel && (spellCooldowns[v.pt] || 0) > 0).map(v => (
-                  <span key={v.pt} className="bg-parchment border border-ink-dark/20 text-ink-dark px-2 py-1 rounded shadow-md text-[9px] md:text-[10px] font-bold">
-                    {v.pt} <span className="text-ink-red ml-1">⏳{spellCooldowns[v.pt]}</span>
-                  </span>
-                ))
-              )}
-            </div>
-            <BattleLog logs={logs} />
-          </div>
         </div>
 
         {/* Global Overlays */}
@@ -649,8 +659,8 @@ export default function App() {
 
         <Overlay 
           show={overlayData.show || player.hp <= 0}
-          title={player.hp <= 0 ? 'A Tinta Secou' : overlayData.title}
-          desc={player.hp <= 0 ? 'As páginas da sua história fecharam-sem. Estude as suas anotações e reescreva o seu destino!' : overlayData.desc}
+          title={player.hp <= 0 ? 'FIM DA HISTÓRIA' : overlayData.title}
+          desc={player.hp <= 0 ? 'As suas páginas fecharam-se...' : overlayData.desc}
           score={player.monstersDefeated}
           level={player.level}
           onRestart={resetGame}
