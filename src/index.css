@@ -169,7 +169,7 @@
   }
 
   .speech-bubble {
-    @apply absolute bottom-[115%] left-1/2 -translate-x-1/2 translate-y-[10px] text-ink-dark px-4 py-2 border border-ink-dark/40 text-base md:text-xl font-bold text-center min-w-[200px] max-w-[320px] w-max z-[100] opacity-0 pointer-events-none transition-all duration-300 shadow-sm bg-parchment;
+    @apply absolute bottom-[115%] left-1/2 -translate-x-1/2 translate-y-[20px] text-ink-dark px-4 py-2 border border-ink-dark/40 text-base md:text-xl font-bold text-center min-w-[200px] max-w-[320px] w-max z-[100] opacity-0 pointer-events-none transition-all duration-300 shadow-sm bg-parchment;
     background-image: url('https://www.transparenttextures.com/patterns/old-wall.png');
     font-family: 'Special Elite', cursive;
   }

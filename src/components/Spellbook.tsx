@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Spell, ElementType } from '../types';
 import { ELEMENTS_INFO, STATUS_NAMES_PT } from '../constants';
 import { VOCABULARY } from '../vocabulary';
@@ -13,11 +13,14 @@ interface SpellbookProps {
 export default function Spellbook({ level, unlockedCount, spellCooldowns, onClose }: SpellbookProps) {
   const [expandedSealed, setExpandedSealed] = useState<Record<string, boolean>>({});
 
-  const grouped: Record<string, Spell[]> = {};
-  VOCABULARY.forEach(v => {
-    if (!grouped[v.element]) grouped[v.element] = [];
-    grouped[v.element].push(v);
-  });
+  const grouped = useMemo(() => {
+    const g: Record<string, Spell[]> = {};
+    VOCABULARY.forEach(v => {
+      if (!g[v.element]) g[v.element] = [];
+      g[v.element].push(v);
+    });
+    return g;
+  }, []);
 
   const getEffectDesc = (vocab: Spell) => {
     if (!vocab.effect) return null;

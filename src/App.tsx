@@ -146,11 +146,20 @@ export default function App() {
   const sparkContainerRef = useRef<HTMLDivElement>(null);
 
   // Initialize first monster
+  const initialized = useRef(false);
   useEffect(() => {
-    spawnMonster(0);
-    addLog('Um Slime materializou-se!', 'text-ink-green');
-    addLog('Prepare o seu encantamento...', 'text-ink-dark/60 italic');
+    if (!initialized.current) {
+      initialized.current = true;
+      spawnMonster(0);
+      inputRef.current?.focus();
+      addLog('Um Slime materializou-se!', 'text-ink-green');
+      addLog('Prepare o seu encantamento...', 'text-ink-dark/60 italic');
+    }
   }, []);
+  
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [monster]);
 
   const addLog = useCallback((message: string, colorClass: string = 'text-ink-dark') => {
     setLogs(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), message, colorClass }]);
@@ -566,6 +575,7 @@ export default function App() {
     }
 
     setIsAnimating(false);
+    inputRef.current?.focus();
   };
 
   const createSparkle = (e: FormEvent) => {
@@ -597,13 +607,9 @@ export default function App() {
        sparkle.style.setProperty('--tx', `${tx}px`);
        sparkle.style.setProperty('--ty', `${ty}px`);
        
-       // Position near the typing cursor (heuristically at the end or random)
-       const isAtEnd = true; // simplifying
-       const horizontalOffset = isAtEnd ? inputE.value.length * 8 : Math.random() * rect.width;
-       const clampedOffset = Math.min(horizontalOffset, rect.width - 20) + 10;
-       
-       sparkle.style.left = `${clampedOffset + (rect.left - containerRect.left)}px`;
-       sparkle.style.top = `${Math.random() * rect.height * 0.5 + (rect.top - containerRect.top)}px`;
+       // Position around the input box randomly
+       sparkle.style.left = `${Math.random() * rect.width + (rect.left - containerRect.left)}px`;
+       sparkle.style.top = `${Math.random() * rect.height + (rect.top - containerRect.top)}px`;
        
        sparkContainerRef.current.appendChild(sparkle);
        setTimeout(() => sparkle.remove(), 800);
@@ -758,7 +764,7 @@ export default function App() {
         {/* RIGHT PAGE - Action Context */}
         <div className="flex-1 p-4 md:p-12 flex flex-col w-full md:w-1/2 border-t-2 border-ink-dark/30 md:border-t-0 md:border-l-2 h-full min-h-0">
             {/* Player Info Area */}
-            <div className={cn("mb-6 pb-4 border-b-2 border-ink-dark/20 flex flex-col w-full transition-all flex-shrink-0", playerShake && "anim-damage")}>
+            <div className={cn("mb-2 pb-2 border-b-2 border-ink-dark/20 flex flex-col w-full transition-all flex-shrink-0", playerShake && "anim-damage")}>
               <div className="flex justify-between items-end w-full mb-4">
                 <div className="flex flex-col">
                   <span className="font-bold uppercase tracking-widest title-text text-base text-ink-dark/90 leading-tight">
@@ -794,8 +800,8 @@ export default function App() {
             </div>
 
             {/* Input Form */}
-            <div className="flex flex-col gap-6 flex-shrink-0" ref={sparkContainerRef}>
-               <div className="flex flex-col relative">
+            <div className="flex flex-col gap-6 flex-shrink-0 relative" ref={sparkContainerRef}>
+               <div className="flex flex-col">
                   <label htmlFor="answer-input" className="text-sm font-bold mb-2 uppercase tracking-widest title-text opacity-70">Escrever Encantamento</label>
                   <input 
                     ref={inputRef}
