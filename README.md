@@ -31,3 +31,9 @@ O jogo foi criado com uma estética de 'livro vivo', combinando componentes de R
 - Uma sessão inteira narra a epopeia como um histórico das anotações das ações conjuradas no papel. Tudo ficará gravado no canto direito temporal (e com limitação de rolagem perfeitamente estruturada para não interferir na encadernação de capa e contracapa).
 
 Divirta-se tentando passar pelo panteão final!
+
+## 📜 Créditos
+
+Agradecimentos especiais a **Fabien CHAVONET** pela inspiração e animação realista de "flip book" (virar páginas) em CSS 3D.
+- GitHub: [@fchavonet](https://github.com/fchavonet)
+- Repositório: [creative_coding-flip_book](https://github.com/fchavonet/creative_coding-flip_book)

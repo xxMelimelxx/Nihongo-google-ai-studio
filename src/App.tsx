@@ -172,19 +172,6 @@ export default function App() {
 
   const sparkContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-Save System
-  useEffect(() => {
-    if (gameStarted) {
-      if (player.level > 1 || player.xp > 0 || player.monstersDefeated > 0) {
-        localStorage.setItem('typspell_save_auto', JSON.stringify({
-          player,
-          playerName,
-          monsterIndex,
-        }));
-      }
-    }
-  }, [player, playerName, monsterIndex, gameStarted]);
-
   const loadAutoSave = () => {
     try {
       const data = localStorage.getItem('typspell_save_auto');
@@ -541,10 +528,19 @@ export default function App() {
            });
 
             setTimeout(() => {
-              setMonsterIndex(idx => {
-                const nextIdx = idx + 1;
-                spawnMonster(nextIdx);
-                return nextIdx;
+              setPlayer(latestP => {
+                  setMonsterIndex(idx => {
+                    const nextIdx = idx + 1;
+                    spawnMonster(nextIdx);
+                    // AUTO SAVE AT THE EXACT MOMENT OF NEXT MONSTER
+                    localStorage.setItem('typspell_save_auto', JSON.stringify({
+                       player: latestP,
+                       playerName,
+                       monsterIndex: nextIdx,
+                    }));
+                    return nextIdx;
+                  });
+                  return latestP;
               });
             }, 1000);
             return null;
@@ -628,7 +624,8 @@ export default function App() {
       });
       // Set new cooldown for used spell
       if (finalSpell && finalSpell.cooldown > 0) {
-        next[finalSpell.pt] = finalSpell.cooldown;
+        const extraTurns = Math.max(0, Math.floor((player.level - finalSpell.unlockLevel) / 2));
+        next[finalSpell.pt] = finalSpell.cooldown + extraTurns;
       }
       return next;
     });

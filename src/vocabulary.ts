@@ -135,7 +135,7 @@ export const VOCABULARY: Spell[] = [
   { pt: "Mundo", romaji: "sekai", kana: "せかい", kanji: "世界", power: 100, type: "attack", element: "arcane", unlockLevel: 15, cooldown: 5, currentCooldown: 0 },
   { pt: "Vida", romaji: "inochi", kana: "いのち", kanji: "命", power: 150, type: "heal", element: "light", unlockLevel: 12, cooldown: 6, currentCooldown: 0, effect: 'regen', effectChance: 1.0, effectDuration: 3, effectTarget: 'self' },
   { pt: "Morte", romaji: "shi", kana: "し", kanji: "死", power: 500, type: "attack", element: "void", unlockLevel: 20, cooldown: 10, currentCooldown: 0 },
-  { pt: "Criança", romaji: "kodomo", kana: "こども", kanji: "子供", power: 25, type: "attack", element: "physical", unlockLevel: 2, cooldown: 1, currentCooldown: 0 },
+  { pt: "Golpe", romaji: "dageki", kana: "だげき", kanji: "打撃", power: 25, type: "attack", element: "physical", unlockLevel: 2, cooldown: 1, currentCooldown: 0 },
   { pt: "Homem", romaji: "otoko", kana: "おとこ", kanji: "男", power: 35, type: "attack", element: "physical", unlockLevel: 4, cooldown: 2, currentCooldown: 0 },
   { pt: "Mulher", romaji: "onna", kana: "おんな", kanji: "女", power: 35, type: "attack", element: "physical", unlockLevel: 4, cooldown: 2, currentCooldown: 0 },
   { pt: "Pai", romaji: "chichi", kana: "ちち", kanji: "父", power: 60, type: "status", element: "light", unlockLevel: 6, cooldown: 4, currentCooldown: 0, effect: 'shield', effectChance: 0.7, effectDuration: 3, effectTarget: 'self' },
