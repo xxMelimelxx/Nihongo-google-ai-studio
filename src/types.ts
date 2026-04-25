@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type ElementType = 'fire' | 'water' | 'thunder' | 'wind' | 'nature' | 'physical' | 'light' | 'arcane' | 'void' | 'utility';
+export type ElementType = 'fire' | 'water' | 'thunder' | 'wind' | 'nature' | 'physical' | 'light' | 'arcane' | 'void' | 'utility' | 'time' | 'music' | 'earth' | 'ice' | 'metal' | 'blood' | 'cosmos';
 
 export type StatusType = 'burn' | 'bleed' | 'freeze' | 'paralyze' | 'weaken' | 'shield' | 'regen' | 'poison' | 'blind' | 'silence' | 'hint' | 'cleanse' | 'reduce_cd' | 'force_bonus';
 

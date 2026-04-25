@@ -10,7 +10,14 @@ export const ELEMENTS_INFO: Record<ElementType, { name: string; icon: string; co
   light: { name: 'Luz & Cura', icon: '✨', color: '#b45309', bg: '#f9f3e5' },
   arcane: { name: 'Arcano', icon: '🔮', color: '#4c1d95', bg: '#f9f3e5' },
   void: { name: 'Vazio & Tempo', icon: '🌌', color: '#312e81', bg: '#f9f3e5' },
-  utility: { name: 'Suporte', icon: '🌟', color: '#713f12', bg: '#f9f3e5' }
+  utility: { name: 'Suporte', icon: '🌟', color: '#713f12', bg: '#f9f3e5' },
+  time: { name: 'Tempo', icon: '⏳', color: '#312e81', bg: '#f9f3e5' },
+  music: { name: 'Música', icon: '🎵', color: '#4c1d95', bg: '#f9f3e5' },
+  earth: { name: 'Terra', icon: '🪨', color: '#57534e', bg: '#f9f3e5' },
+  ice: { name: 'Gelo', icon: '❄️', color: '#0ea5e9', bg: '#f9f3e5' },
+  metal: { name: 'Metal', icon: '⚙️', color: '#71717a', bg: '#f9f3e5' },
+  blood: { name: 'Sangue', icon: '🩸', color: '#991b1b', bg: '#f9f3e5' },
+  cosmos: { name: 'Cosmos', icon: '🌌', color: '#1e1b4b', bg: '#f9f3e5' }
 };
 
 export const STATUS_ICONS: Record<StatusType, string> = {

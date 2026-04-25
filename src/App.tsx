@@ -15,9 +15,9 @@ import { Player, Monster, Spell, LogEntry, StatusType, ElementType } from './typ
 import { 
   STATUS_ICONS, 
   STATUS_NAMES_PT, 
-  FLAVOR_WORDS, 
   ENEMY_SKILLS_POOL 
 } from './constants';
+import { getGenericFlavor, getMonsterFlavor } from './flavor';
 import { VOCABULARY } from './vocabulary';
 import { MONSTERS_LIST } from './monsters';
 import { getMonsterVariation } from './monsterVariations';
@@ -138,22 +138,87 @@ export default function App() {
   const [overlayData, setOverlayData] = useState({ show: false, title: '', desc: '' });
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [monsterSpeech, setMonsterSpeech] = useState<string | null>(null);
+  const [flavorUsage, setFlavorUsage] = useState<Record<string, number>>({});
+  const [monsterInteractions, setMonsterInteractions] = useState<number>(0);
   const [showJpName, setShowJpName] = useState(false);
   const [spellCooldowns, setSpellCooldowns] = useState<Record<string, number>>({});
   const [activeEffect, setActiveEffect] = useState<ElementType | null>(null);
+  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const showMonsterSpeech = (text: string, duration: number = 8000) => {
+    setMonsterSpeech(text);
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+    }
+    speechTimeoutRef.current = setTimeout(() => {
+      setMonsterSpeech(null);
+    }, duration);
+  };
   
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const enforceFocus = useCallback(() => {
+    if (!showSpellbook && gameStarted) {
+      // Small delays help ensure DOM is ready and previous events finished
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 30);
+    }
+  }, [showSpellbook, gameStarted]);
+
+  useEffect(() => {
+    enforceFocus();
+  }, [enforceFocus, monster, isAnimating]);
+
   const sparkContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-Save System
+  useEffect(() => {
+    if (gameStarted) {
+      if (player.level > 1 || player.xp > 0 || player.monstersDefeated > 0) {
+        localStorage.setItem('typspell_save_auto', JSON.stringify({
+          player,
+          playerName,
+          monsterIndex,
+        }));
+      }
+    }
+  }, [player, playerName, monsterIndex, gameStarted]);
+
+  const loadAutoSave = () => {
+    try {
+      const data = localStorage.getItem('typspell_save_auto');
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed.player) {
+          setPlayer(parsed.player);
+          setPlayerName(parsed.playerName || '');
+          setMonsterIndex(parsed.monsterIndex || 0);
+          spawnMonster(parsed.monsterIndex || 0);
+          setGameStarted(true);
+        }
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  };
 
   // Initialize first monster
   const initialized = useRef(false);
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
-      spawnMonster(0);
-      inputRef.current?.focus();
-      addLog('Um Slime materializou-se!', 'text-ink-green');
-      addLog('Prepare o seu encantamento...', 'text-ink-dark/60 italic');
+      const data = localStorage.getItem('typspell_save_auto');
+      if (data) {
+         // show load modal or directly load? Auto-load might be jarring if they want new game.
+         // For now, load auto save automatically if exists and has progress.
+         loadAutoSave();
+      } else {
+         spawnMonster(0);
+         inputRef.current?.focus();
+         addLog('Um Slime materializou-se!', 'text-ink-green');
+         addLog('Prepare o seu encantamento...', 'text-ink-dark/60 italic');
+      }
     }
   }, []);
   
@@ -180,6 +245,8 @@ export default function App() {
     const shouldHaveVariation = Math.random() < 0.2;
     const variation = shouldHaveVariation ? getMonsterVariation(template.name) : { name: template.name, translation: undefined };
     
+    setMonsterInteractions(0);
+
     let newMonster: Monster = {
       ...template,
       name: variation.name,
@@ -493,9 +560,11 @@ export default function App() {
     const val = rawVal.replace(/\s+/g, '');
     if (!val) return;
 
-    if (FLAVOR_WORDS[val]) {
-      setMonsterSpeech(FLAVOR_WORDS[val].r);
-      setTimeout(() => setMonsterSpeech(null), 3000);
+    const genericResponse = getGenericFlavor(val, flavorUsage[val] || 0);
+
+    if (genericResponse) {
+      setFlavorUsage(prev => ({ ...prev, [val]: (prev[val] || 0) + 1 }));
+      showMonsterSpeech(genericResponse);
       setInputVal('');
       return;
     }
@@ -527,6 +596,13 @@ export default function App() {
 
     if (!finalSpell) {
       addLog(`Palavras incompreensíveis. O feitiço não se formou!`, 'text-ink-dark/60 italic font-bold');
+      
+      const mFlavor = getMonsterFlavor(monster.name, monsterInteractions);
+      if (mFlavor && Math.random() < 0.6) {
+        setMonsterInteractions(prev => prev + 1);
+        showMonsterSpeech(mFlavor);
+      }
+      
       await delay(800);
       await monsterTurnLogic(monster, player);
       setIsAnimating(false);
@@ -654,7 +730,10 @@ export default function App() {
             </button>
         </div>
       ) : (
-      <div className="grimoire-page my-auto shrink-0 flex flex-col md:flex-row !p-0 max-w-6xl w-full relative h-auto md:h-[700px] max-h-[95vh] md:max-h-[85vh]">
+      <div 
+        className="grimoire-page my-auto shrink-0 flex flex-col md:flex-row !p-0 max-w-6xl w-full relative h-auto md:h-[700px] max-h-[95vh] md:max-h-[85vh]"
+        onClick={() => { if(!isAnimating && !showSpellbook) inputRef.current?.focus(); }}
+      >
         <div className="grimoire-spine hidden md:block" />
         
         {/* LEFT PAGE - Battle Context */}
@@ -667,31 +746,88 @@ export default function App() {
              </div>
              <button 
                 onClick={() => setIsAdminOpen(!isAdminOpen)} 
-                className="text-[12px] opacity-20 hover:opacity-100 uppercase title-text transition-opacity"
+                className="text-xs md:text-sm font-bold opacity-70 hover:opacity-100 uppercase title-text transition-opacity flex items-center gap-2 border border-ink-dark/30 px-3 py-1 rounded bg-[#ebd5b3] hover:bg-[#d8b88d] shadow-sm"
              >
-                ⚙
+                <span className="text-lg">⚙</span> SISTEMA
              </button>
            </div>
            
-           {/* Admin Console */}
+           {/* Sistema / Menu */}
            {isAdminOpen && (
-             <div className="mb-4 z-50 bg-[#e0c9a3] p-4 border border-ink-dark/30 shadow-inner">
-               <div className="text-sm font-bold border-b border-ink-dark pb-2 flex justify-between mb-3 text-ink-red">
-                   <span className="title-text uppercase tracking-widest">Ferramentas Sombrias</span>
-                   <button onClick={() => setIsAdminOpen(false)} className="hover:text-red-900 text-lg leading-none">X</button>
-               </div>
-               <div className="flex flex-wrap gap-3 text-xs font-bold uppercase title-text">
-                   <button onClick={() => setPlayer(p => ({ ...p, level: Math.min(40, p.level + 1) }))} className="hover:text-ink-red underline">+1 Nível</button>
-                   <button onClick={() => setPlayer(p => ({ ...p, xp: p.xp + 1000 }))} className="hover:text-ink-red underline">+1000 XP</button>
-                   <button onClick={() => setPlayer(p => ({ ...p, hp: p.maxHp }))} className="hover:text-green-700 underline">Curar HP</button>
-                   <button onClick={() => setSpellCooldowns({})} className="hover:text-purple-700 underline">0 Recargas</button>
-                   <button onClick={() => setMonster(m => m ? ({ ...m, currentHp: 0 }) : null)} className="hover:text-red-700 underline">Kill Monster</button>
-               </div>
+             <div className="absolute inset-0 z-50 bg-[#0a0a0a]/80 flex justify-center items-center backdrop-blur-sm p-4">
+               <motion.div 
+                 initial={{ opacity: 0, scale: 0.95 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 className="bg-[#e0c9a3] w-full max-w-sm border-2 border-ink-dark shadow-[0_0_40px_rgba(44,27,24,0.6)] p-6 relative rounded-sm"
+                 style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/aged-paper.png")' }}
+               >
+                 <div className="text-xl font-bold border-b-2 border-ink-dark/30 pb-3 flex justify-between mb-6 text-[#2c1b18]">
+                     <span className="title-text justify-center uppercase tracking-widest text-center w-full">Configurações Base</span>
+                     <button onClick={() => setIsAdminOpen(false)} className="absolute right-6 hover:text-red-900 text-2xl leading-none">×</button>
+                 </div>
+                 
+                 <div className="mb-6">
+                   <span className="text-sm uppercase font-bold title-text mb-3 block text-center border-b border-ink-dark/10 pb-1">Salvar Livro Mágico</span>
+                   <div className="flex flex-col gap-2">
+                     {[1, 2, 3].map(slot => {
+                        const hasSave = localStorage.getItem(`typspell_save_${slot}`);
+                        return (
+                          <button key={slot} onClick={() => {
+                            localStorage.setItem(`typspell_save_${slot}`, JSON.stringify({ player, playerName, monsterIndex }));
+                            addLog(`Jogo salvo magicamente no slot ${slot}!`, 'text-blue-700');
+                            setIsAdminOpen(false);
+                          }} className="bg-ink-dark/5 hover:bg-ink-dark/20 text-sm title-text border border-ink-dark/30 px-3 py-2 text-left flex justify-between items-center group transition-colors">
+                            <span>Espaço Mágico {slot}</span>
+                            <span className="text-xs opacity-50 group-hover:opacity-100">{hasSave ? '(Substituir)' : '(Vazio)'}</span>
+                          </button>
+                        )
+                     })}
+                   </div>
+                 </div>
+
+                 <div className="mb-8">
+                   <span className="text-sm uppercase font-bold title-text mb-3 block text-center border-b border-ink-dark/10 pb-1">Despertar Memória</span>
+                   <div className="flex flex-col gap-2">
+                     {[1, 2, 3].map(slot => {
+                        const hasSave = localStorage.getItem(`typspell_save_${slot}`);
+                        return (
+                          <button key={slot} disabled={!hasSave} onClick={() => {
+                            const data = localStorage.getItem(`typspell_save_${slot}`);
+                            if (data) {
+                              const parsed = JSON.parse(data);
+                              if (parsed.player) {
+                                setPlayer(parsed.player);
+                                setPlayerName(parsed.playerName || '');
+                                setMonsterIndex(parsed.monsterIndex || 0);
+                                spawnMonster(parsed.monsterIndex || 0);
+                                addLog(`Memória carregada do espaço ${slot}!`, 'text-blue-700');
+                                setIsAdminOpen(false);
+                              }
+                            }
+                          }} className={cn("text-sm title-text border px-3 py-2 text-left flex justify-between items-center transition-colors", hasSave ? "bg-ink-dark/5 hover:bg-ink-dark/20 border-ink-dark/30" : "opacity-30 border-ink-dark/10 cursor-not-allowed")}>
+                            <span>Espaço Mágico {slot}</span>
+                            <span className="text-xs opacity-50">{hasSave ? 'Carregar' : 'Vazio'}</span>
+                          </button>
+                        )
+                     })}
+                   </div>
+                 </div>
+
+                 {/* Secrets */}
+                 <div className="text-[10px] font-bold uppercase title-text border-t border-ink-dark/20 pt-2 flex flex-wrap gap-2 justify-center opacity-30 hover:opacity-100 transition-opacity">
+                     <span className="w-full text-center mb-1">Poderes Sombrios</span>
+                     <button onClick={() => setPlayer(p => ({ ...p, level: Math.min(40, p.level + 1) }))} className="hover:text-ink-red">+1 Nível</button>
+                     <button onClick={() => setPlayer(p => ({ ...p, xp: p.xp + 1000 }))} className="hover:text-ink-red">+1000 XP</button>
+                     <button onClick={() => setPlayer(p => ({ ...p, hp: p.maxHp }))} className="hover:text-green-700">Curar</button>
+                     <button onClick={() => setSpellCooldowns({})} className="hover:text-purple-700">0 Recargas</button>
+                     <button onClick={() => setMonster(m => m ? ({ ...m, currentHp: 0 }) : null)} className="hover:text-red-700">Kill</button>
+                 </div>
+               </motion.div>
              </div>
            )}
 
            {/* Monster Area */}
-           <div className="flex-1 flex flex-col items-center justify-center relative min-h-[160px] md:min-h-[200px]">
+           <div className={cn("flex-1 flex flex-col items-center justify-center relative min-h-[160px] md:min-h-[200px] rounded-lg transition-all", monster?.statuses.map(s => `status-${s.type}`).join(" "))}>
              <AnimatePresence>
                {activeEffect && (
                  <div key={activeEffect}>
@@ -764,7 +900,7 @@ export default function App() {
         {/* RIGHT PAGE - Action Context */}
         <div className="flex-1 p-4 md:p-12 flex flex-col w-full md:w-1/2 border-t-2 border-ink-dark/30 md:border-t-0 md:border-l-2 h-full min-h-0">
             {/* Player Info Area */}
-            <div className={cn("mb-2 pb-2 border-b-2 border-ink-dark/20 flex flex-col w-full transition-all flex-shrink-0", playerShake && "anim-damage")}>
+            <div className={cn("mb-2 pb-2 border-b-2 border-ink-dark/20 flex flex-col w-full transition-all flex-shrink-0 rounded-lg px-2", playerShake && "anim-damage", player.statuses.map(s => `status-${s.type}`).join(" "))}>
               <div className="flex justify-between items-end w-full mb-4">
                 <div className="flex flex-col">
                   <span className="font-bold uppercase tracking-widest title-text text-base text-ink-dark/90 leading-tight">

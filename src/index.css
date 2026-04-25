@@ -169,9 +169,36 @@
   }
 
   .speech-bubble {
-    @apply absolute bottom-[115%] left-1/2 -translate-x-1/2 translate-y-[20px] text-ink-dark px-4 py-2 border border-ink-dark/40 text-base md:text-xl font-bold text-center min-w-[200px] max-w-[320px] w-max z-[100] opacity-0 pointer-events-none transition-all duration-300 shadow-sm bg-parchment;
+    @apply absolute top-[10%] left-1/2 -translate-x-1/2 text-ink-dark px-4 py-4 border-2 rounded-xl border-ink-dark/40 text-base md:text-xl font-bold text-center min-w-[200px] max-w-[320px] w-max z-[100] opacity-0 pointer-events-none transition-all duration-300 shadow-md bg-parchment;
     background-image: url('https://www.transparenttextures.com/patterns/old-wall.png');
     font-family: 'Special Elite', cursive;
+  }
+
+  .speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 10px 10px 0;
+    border-style: solid;
+    border-color: rgba(30, 30, 30, 0.4) transparent transparent transparent;
+    display: block;
+    width: 0;
+  }
+
+  .speech-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 10px 10px 0;
+    border-style: solid;
+    border-color: #f7f1e3 transparent transparent transparent; /* parchment color */
+    display: block;
+    width: 0;
+    z-index: 1;
   }
 
   .speech-show {
@@ -211,4 +238,48 @@
   .idle-float { animation: floatIdle 3s ease-in-out infinite; }
   .anim-attack-p { animation: attack-p 0.4s ease-in-out; }
   .anim-attack-m { animation: attack-m 0.4s ease-in-out; }
+
+  /* Status Effect Animations */
+  @keyframes status-burn {
+    0% { box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.4), 0 0 15px rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: inset 0 0 20px rgba(249, 115, 22, 0.6), 0 0 25px rgba(249, 115, 22, 0.6); }
+    100% { box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.4), 0 0 15px rgba(239, 68, 68, 0.4); }
+  }
+
+  @keyframes status-poison {
+    0% { box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.4), 0 0 15px rgba(34, 197, 94, 0.4); }
+    50% { box-shadow: inset 0 0 20px rgba(22, 163, 74, 0.6), 0 0 25px rgba(22, 163, 74, 0.6); }
+    100% { box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.4), 0 0 15px rgba(34, 197, 94, 0.4); }
+  }
+
+  @keyframes status-freeze {
+    0% { box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.4), 0 0 15px rgba(56, 189, 248, 0.4); }
+    50% { box-shadow: inset 0 0 20px rgba(14, 165, 233, 0.6), 0 0 25px rgba(14, 165, 233, 0.6); }
+    100% { box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.4), 0 0 15px rgba(56, 189, 248, 0.4); }
+  }
+
+  @keyframes status-bleed {
+    0% { box-shadow: inset 0 0 10px rgba(153, 27, 27, 0.4), 0 0 15px rgba(153, 27, 27, 0.4); }
+    50% { box-shadow: inset 0 0 20px rgba(220, 38, 38, 0.6), 0 0 25px rgba(220, 38, 38, 0.6); }
+    100% { box-shadow: inset 0 0 10px rgba(153, 27, 27, 0.4), 0 0 15px rgba(153, 27, 27, 0.4); }
+  }
+
+  @keyframes status-shield {
+    0% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.4), 0 0 15px rgba(234, 179, 8, 0.4); }
+    50% { box-shadow: inset 0 0 20px rgba(253, 224, 71, 0.6), 0 0 25px rgba(253, 224, 71, 0.6); }
+    100% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.4), 0 0 15px rgba(234, 179, 8, 0.4); }
+  }
+
+  @keyframes status-regen {
+    0% { box-shadow: inset 0 0 10px rgba(163, 230, 53, 0.4), 0 0 15px rgba(163, 230, 53, 0.4); }
+    50% { box-shadow: inset 0 0 20px rgba(190, 242, 100, 0.6), 0 0 25px rgba(190, 242, 100, 0.6); }
+    100% { box-shadow: inset 0 0 10px rgba(163, 230, 53, 0.4), 0 0 15px rgba(163, 230, 53, 0.4); }
+  }
+
+  .status-burn { animation: status-burn 2s infinite; border-color: rgba(239, 68, 68, 0.8) !important; }
+  .status-poison { animation: status-poison 2s infinite; border-color: rgba(34, 197, 94, 0.8) !important; }
+  .status-freeze { animation: status-freeze 2s infinite; border-color: rgba(56, 189, 248, 0.8) !important; }
+  .status-bleed { animation: status-bleed 1.5s infinite; border-color: rgba(153, 27, 27, 0.8) !important; }
+  .status-shield { animation: status-shield 3s infinite; border-color: rgba(234, 179, 8, 0.8) !important; }
+  .status-regen { animation: status-regen 2.5s infinite; border-color: rgba(163, 230, 53, 0.8) !important; }
 }
