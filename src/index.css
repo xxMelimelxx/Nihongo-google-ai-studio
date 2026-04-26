@@ -240,6 +240,7 @@
     transform-origin: left center;
     transform-style: preserve-3d;
     transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+    will-change: transform;
   }
 
   .book-page.flipped {
@@ -257,7 +258,7 @@
 
   .page-front {
     border-radius: 0 4px 4px 0;
-    box-shadow: inset -5px 0 15px rgba(0,0,0,0.05), 5px 10px 20px rgba(0,0,0,0.15);
+    box-shadow: inset -5px 0 15px rgba(0,0,0,0.05);
     border-right: 2px solid rgba(59, 42, 33, 0.2);
     border-top: 2px solid rgba(59, 42, 33, 0.1);
     border-bottom: 2px solid rgba(59, 42, 33, 0.1);
@@ -275,13 +276,22 @@
   .page-back {
     transform: rotateY(180deg);
     border-radius: 4px 0 0 4px;
-    box-shadow: inset 5px 0 15px rgba(0,0,0,0.05), -5px 10px 20px rgba(0,0,0,0.15);
+    box-shadow: inset 5px 0 15px rgba(0,0,0,0.05);
     border-left: 2px solid rgba(59, 42, 33, 0.2);
     border-top: 2px solid rgba(59, 42, 33, 0.1);
     border-bottom: 2px solid rgba(59, 42, 33, 0.1);
   }
 
-  .page-back::before {
+  .book-page .page-back::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; bottom: 0; width: 50px;
+    background: linear-gradient(to right, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.05) 40%, transparent 100%);
+    pointer-events: none;
+    z-index: 40;
+  }
+
+  .base-left-shadow::before {
     content: "";
     position: absolute;
     top: 0; right: 0; bottom: 0; width: 50px;
