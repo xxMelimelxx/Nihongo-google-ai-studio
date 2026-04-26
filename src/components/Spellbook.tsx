@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, memo, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, memo, useCallback } from 'react';
 import { Spell, ElementType } from '../types';
 import { ELEMENTS_INFO, SEQUENCE_BONUSES } from '../constants';
 import { VOCABULARY } from '../vocabulary';
@@ -304,9 +304,15 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, discov
             </span>
             <button 
               onClick={onClose} 
-              className="grimoire-btn border-2 border-[#3b2a21]/50 bg-[#3b2a21]/5 hover:bg-[#3b2a21]/10 px-8 py-3 rounded-sm title-text font-bold text-sm md:text-base transition-all shadow-md text-[#3b2a21] uppercase tracking-[4px] border-b-[4px] active:border-b-[2px] active:translate-y-[2px]"
+              className="grimoire-btn border-2 border-[#3b2a21]/50 bg-[#3b2a21]/5 hover:bg-[#3b2a21]/10 px-8 py-3 rounded-sm title-text font-bold text-sm md:text-base transition-all shadow-md text-[#3b2a21] uppercase tracking-[4px] border-b-[4px] active:border-b-[2px] active:translate-y-[2px] mb-4"
             >
               FECHAR E VOLTAR
+            </button>
+            <button 
+              onClick={onOpenCombos}
+              className="flex items-center gap-3 text-[#3b2a21]/60 hover:text-purple-900 transition-colors title-text text-sm font-bold uppercase tracking-widest"
+            >
+              <span className="text-xl">📜</span> Ver Anotações de Alquimia
             </button>
           </div>
           <div className="shrink-0 pt-4 flex justify-between items-center text-[#3b2a21] border-t border-[#432d22]/10 mt-2">
@@ -409,6 +415,13 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, discov
           onChange={(e) => setLevelQuery(e.target.value)}
           className="w-16 md:w-20 bg-[#110515]/90 text-[#e0c9a3] placeholder:text-[#e0c9a3]/50 px-2 py-2 md:py-3 border-2 border-[#e0c9a3]/30 rounded-md shadow-[0_0_15px_rgba(167,139,250,0.3)] outline-none focus:border-[#a78bfa] focus:shadow-[0_0_25px_rgba(167,139,250,0.6)] tracking-widest uppercase title-text text-xs md:text-sm transition-all text-center"
         />
+        <button 
+          onClick={onOpenCombos}
+          className="bg-[#3b2a21]/90 text-[#e0c9a3] px-3 md:px-4 rounded-md border-2 border-[#e0c9a3]/30 hover:border-[#a78bfa] transition-all flex items-center justify-center shadow-lg"
+          title="Ver Alquimia"
+        >
+          <span className="text-xl">📜</span>
+        </button>
       </div>
 
       {/* Book Container */}

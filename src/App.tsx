@@ -183,8 +183,28 @@ export default function App() {
   const [monsterInteractions, setMonsterInteractions] = useState<number>(0);
   const [showJpName, setShowJpName] = useState(false);
   const [spellCooldowns, setSpellCooldowns] = useState<Record<string, number>>({});
+  const [comboCooldowns, setComboCooldowns] = useState<Record<string, number>>({});
   const [activeEffect, setActiveEffect] = useState<ElementType | null>(null);
   const [recentElements, setRecentElements] = useState<ElementType[]>([]);
+  const recentElementsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearRecentElementsDelayed = useCallback(() => {
+    if (recentElementsTimeoutRef.current) {
+      clearTimeout(recentElementsTimeoutRef.current);
+    }
+    recentElementsTimeoutRef.current = setTimeout(() => {
+      setRecentElements([]);
+    }, 4000);
+  }, []);
+
+  useEffect(() => {
+    if (recentElements.length > 0) {
+      clearRecentElementsDelayed();
+    }
+    return () => {
+      if (recentElementsTimeoutRef.current) clearTimeout(recentElementsTimeoutRef.current);
+    };
+  }, [recentElements, clearRecentElementsDelayed]);
   
   const [stats, setStats] = useState<any>({
     bossesDefeated: 0,
@@ -239,11 +259,27 @@ export default function App() {
       const next = achievementQueue[0];
       setCurrentAchievement(next);
       setAchievementQueue(prev => prev.slice(1));
-      setTimeout(() => {
-        setCurrentAchievement(null);
-      }, 5000);
     }
   }, [achievementQueue, currentAchievement]);
+
+  const achievementTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (currentAchievement) {
+      if (achievementTimeoutRef.current) clearTimeout(achievementTimeoutRef.current);
+      achievementTimeoutRef.current = setTimeout(() => {
+        setCurrentAchievement(null);
+      }, 5000); // 5 seconds
+    }
+    return () => {
+      if (achievementTimeoutRef.current) clearTimeout(achievementTimeoutRef.current);
+    };
+  }, [currentAchievement]);
+
+  const closeAchievement = useCallback(() => {
+    if (achievementTimeoutRef.current) clearTimeout(achievementTimeoutRef.current);
+    setCurrentAchievement(null);
+  }, []);
 
   const checkAchievements = useCallback((p: Player, m?: Monster | null, s?: any) => {
     const newlyUnlocked: Achievement[] = [];
@@ -326,8 +362,8 @@ export default function App() {
     }
 
     const template = MONSTERS_LIST[index];
-    // Variações agora são raras (apenas 20% de chance)
-    const shouldHaveVariation = Math.random() < 0.2;
+    // Variações agora são raras (apenas 5% de chance)
+    const shouldHaveVariation = Math.random() < 0.05;
     const variation = shouldHaveVariation ? getMonsterVariation(template.name) : { name: template.name, translation: undefined };
     
     // Shiny chance (10%)
@@ -587,12 +623,15 @@ export default function App() {
     };
   };
 
-  const executePlayerAction = async (spell: Spell, isBonus: boolean, startBattleId?: number) => {
+  const executePlayerAction = async (spell: Spell, isBonus: boolean, startBattleId?: number, elementsOverwrite?: ElementType[]) => {
     if (!monster) return;
     
     // Process recent elements for sequence bonuses
-    const newRecentElements = [...recentElements, spell.element].slice(-3);
-    setRecentElements(newRecentElements);
+    const baseElements = elementsOverwrite || recentElements;
+    const newRecentElements = [...baseElements, spell.element].slice(-3);
+    
+    // If it was a forced overwrite or a full combo was found, we might want to clear or update
+    setRecentElements(elementsOverwrite ? [] : newRecentElements);
 
     let currentDmgDealt = 0;
     let currentHealDone = 0;
@@ -607,6 +646,9 @@ export default function App() {
         sequenceBonus = SEQUENCE_BONUSES.find(sb => {
           if (sb.sequence.length !== len) return false;
           
+          // Check combo cooldown
+          if ((comboCooldowns[sb.id] || 0) > 0) return false;
+
           // Special case for Trinity (unordered)
           if (sb.id === 'trinity') {
             return ['fire', 'water', 'thunder'].every(needed => currentSlice.includes(needed as ElementType));
@@ -622,6 +664,14 @@ export default function App() {
 
     if (sequenceBonus) {
       addLog(`✨ COMBO: 【${sequenceBonus.name}】! ${sequenceBonus.msg}`, 'text-purple-600 font-bold text-lg animate-pulse');
+      
+      // COMBO DELAY for impact
+      await delay(600);
+
+      // Set combo cooldown (increased as requested)
+      const baseCd = sequenceBonus.sequence.length === 2 ? 8 : 15;
+      setComboCooldowns(prev => ({ ...prev, [sequenceBonus.id]: baseCd }));
+
       if (sequenceBonus.bonus === 'damage') { /* handled via mult below */ }
       if (sequenceBonus.bonus === 'heal') { /* handled via mult below */ }
       if (sequenceBonus.bonus === 'paralyze') applyStatus('monster', 'paralyze', sequenceBonus.duration || 1);
@@ -636,6 +686,9 @@ export default function App() {
       if (!player.discoveredCombos.includes(sequenceBonus.id)) {
         setPlayer(p => ({ ...p, discoveredCombos: [...p.discoveredCombos, sequenceBonus.id] }));
       }
+
+      // Clear energy after a combo is triggered normally
+      setRecentElements([]);
     }
 
     setStats(prev => {
@@ -861,6 +914,7 @@ export default function App() {
       else customSpeech = "Hahaha! Tente falar o idioma da magia, mortal!";
 
       showMonsterSpeech(customSpeech);
+      setStats(s => ({ ...s, consecutiveHits: 0 }));
       await delay(1200);
       await monsterTurnLogic(monster, player);
       setIsAnimating(false);
@@ -890,6 +944,82 @@ export default function App() {
     }
 
     if (!finalSpell) {
+      // Check if it was a multi-word sequence (potential combo)
+      const parts = rawVal.split(/\s+/).filter(p => p.length > 0);
+      if (parts.length > 1) {
+        const potentialSpells = parts.map(p => {
+          return VOCABULARY.find(v => {
+            if (player.level < v.unlockLevel) return false;
+            const r = v.romaji.replace(/\s+/g, '');
+            return p === r || p === v.kana || p === v.kanji || wanakana.toHiragana(p) === v.kana;
+          });
+        }).filter(s => s !== undefined) as Spell[];
+
+        if (potentialSpells.length >= 2) {
+          const elementsSequence = potentialSpells.map(s => s.element);
+          const combo = SEQUENCE_BONUSES.find(sb => {
+             if (sb.sequence.length !== elementsSequence.length) return false;
+             if (sb.id === 'trinity' && elementsSequence.length === 3) {
+               return ['fire', 'water', 'thunder'].every(needed => elementsSequence.includes(needed as any));
+             }
+             return sb.sequence.every((el, i) => el === elementsSequence[i]);
+          });
+
+          if (combo) {
+            // SUCCESSFUL INSTANT COMBO!
+            addLog(`VOCÊ DESPERTOU UM COMBO INSTANTÂNEO!`, 'text-purple-600 font-bold text-lg');
+            
+            // Artificial delay to build tension
+            setIsAnimating(true);
+            await delay(800);
+
+            // Prepare elements for executePlayerAction
+            const allButLast = potentialSpells.slice(0, -1).map(s => s.element);
+            const lastSpell = potentialSpells[potentialSpells.length - 1];
+            
+            setActiveEffect(lastSpell.element);
+            setTimeout(() => setActiveEffect(null), 1000);
+            
+            // Cast the last spell but with the specific element sequence
+            await executePlayerAction(lastSpell, isBonus, currentBattleId, allButLast);
+            
+            if (monster && monster.currentHp > 0) {
+              await monsterTurnLogic(monster, player);
+            }
+            
+            setIsAnimating(false);
+            setRecentElements([]); // Reset energy after big combo
+            inputRef.current?.focus();
+            return;
+          } else {
+            // FAILED COMBO - Monster laughs, no turn loss
+            addLog(`A combinação de magias não ressoou...`, 'text-ink-dark/60 italic font-bold');
+            
+            const laughs = [
+              "Hahaha! O que foi isso? Uma dança?",
+              "Você tropeçou nas próprias palavras! 😂",
+              "Mestre das trapalhadas! Os elementos te ignoram.",
+              "Pfff... achei que veria algo real agora.",
+              "Giro, giro... e nada! Hahaha!",
+              "Suas palavras tropeçam uma na outra! Patético!",
+              "Tentar dois ao mesmo tempo? Que ganância! Hahaha!",
+              "Isso foi um combo ou um espirro? 😂",
+              "Os deuses da magia estão rindo de você agora!",
+              "Que bagunça! Organize seus pensamentos, mortal!"
+            ];
+            showMonsterSpeech(laughs[Math.floor(Math.random() * laughs.length)]);
+            
+            setInputVal('');
+            setIsAnimating(false);
+            setRecentElements([]); // Reset energy on failed attempt
+            return; // Turn preserved!
+          }
+        }
+      }
+    }
+
+    if (!finalSpell) {
+      setStats(s => ({ ...s, consecutiveHits: 0 }));
       addLog(`Palavras incompreensíveis. O feitiço não se formou!`, 'text-ink-dark/60 italic font-bold');
       
       const mFlavor = getMonsterFlavor(monster.name, monsterInteractions);
@@ -929,14 +1059,24 @@ export default function App() {
       return next;
     });
 
+    setComboCooldowns(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(key => {
+        if (next[key] > 0) next[key]--;
+      });
+      return next;
+    });
+
     await processStatuses(true);
     
     if (player.hp > 0) {
       let missChance = player.statuses.some(s => s.type === 'blind') ? 0.5 : 0.1;
       if (Math.random() < missChance) {
         addLog(`O feitiço dissipou-se no ar e falhou!`, 'text-ink-dark/60 font-bold');
+        setStats(s => ({ ...s, consecutiveHits: 0 }));
       } else {
         setActiveEffect(finalSpell.element);
+        setStats(s => ({ ...s, consecutiveHits: s.consecutiveHits + 1 }));
         setTimeout(() => setActiveEffect(null), 1000);
         await executePlayerAction(finalSpell, isBonus, currentBattleId);
       }
@@ -1247,19 +1387,19 @@ export default function App() {
             {/* Input Form */}
             <div className="flex flex-col gap-6 flex-shrink-0 relative" ref={sparkContainerRef}>
                {/* Spell Chain Indicator */}
-               {recentElements.length > 0 && (
-                <div className="absolute -top-16 left-0 right-0 flex flex-col items-center gap-1 pointer-events-none">
+                {recentElements.length > 0 && (
+                <div className="absolute -top-20 left-0 right-0 flex flex-col items-center gap-1 pointer-events-none">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-ink-dark/40 title-text">Fluxo Elemental</span>
-                  <div className="flex justify-center gap-2">
-                    <AnimatePresence>
+                  <div className="flex justify-center gap-3">
+                    <AnimatePresence mode="popLayout">
                       {recentElements.map((el, i) => (
                         <motion.div
                           key={`${i}-${el}`}
-                          initial={{ scale: 0, x: 20, rotate: 10 }}
-                          animate={{ scale: 1, x: 0, rotate: 0 }}
+                          initial={{ scale: 0, y: 10, rotate: i % 2 === 0 ? -10 : 10 }}
+                          animate={{ scale: 1, y: 0, rotate: 0 }}
                           exit={{ scale: 0, opacity: 0 }}
                           className={cn(
-                            "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-xl border-2 border-ink-dark/10 bg-white/80 backdrop-blur-md",
+                            "w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center text-lg md:text-2xl shadow-xl border-2 border-ink-dark/10 bg-white/80 backdrop-blur-md",
                             el === 'fire' ? 'text-red-600 shadow-red-500/20' : 
                             el === 'water' ? 'text-blue-600 shadow-blue-500/20' :
                             el === 'thunder' ? 'text-yellow-600 shadow-yellow-500/20' :
@@ -1311,10 +1451,13 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => setShowComboNotes(true)}
-                    className="mt-2 flex items-center justify-center w-7 h-7 bg-[#e0c9a3] text-[#3b2a21] rounded shadow-[0_2px_5px_rgba(0,0,0,0.2)] border border-[#3b2a21]/20 hover:scale-110 active:scale-95 transition-all outline-none"
+                    className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-[#e0c9a3] text-[#3b2a21] rounded shadow-[0_4px_10px_rgba(0,0,0,0.3)] border-2 border-[#3b2a21]/30 hover:scale-110 active:scale-95 transition-all outline-none group relative"
                     title="Anotações de Alquimia"
                   >
-                    <span className="text-sm">📜</span>
+                    <span className="text-xl md:text-2xl">📜</span>
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-purple-600 rounded-full border border-white flex items-center justify-center text-[10px] text-white font-bold shadow-sm">
+                      {player.discoveredCombos.length}
+                    </span>
                   </button>
                </div>
                
@@ -1377,7 +1520,10 @@ export default function App() {
           onRestart={resetGame}
         />
         
-        <AchievementPopup achievement={currentAchievement} />
+        <AchievementPopup 
+          achievement={currentAchievement} 
+          onClose={closeAchievement}
+        />
 
       </div>
       )}
