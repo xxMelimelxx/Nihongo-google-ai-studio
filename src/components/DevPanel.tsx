@@ -9,13 +9,16 @@ interface DevPanelProps {
   monster: Monster | null;
   setPlayer: React.Dispatch<React.SetStateAction<Player>>;
   setMonster: React.Dispatch<React.SetStateAction<Monster | null>>;
+  setSpellCooldowns: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setComboCooldowns: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setStats: React.Dispatch<React.SetStateAction<any>>;
   addLog: (msg: string, color?: string) => void;
   resetGame: () => void;
   onClose: () => void;
 }
 
 export const DevPanel: React.FC<DevPanelProps> = ({ 
-  player, monster, setPlayer, setMonster, addLog, resetGame, onClose 
+  player, monster, setPlayer, setMonster, setSpellCooldowns, setComboCooldowns, setStats, addLog, resetGame, onClose 
 }) => {
   return (
     <motion.div 
@@ -44,7 +47,12 @@ export const DevPanel: React.FC<DevPanelProps> = ({
             </button>
             <button 
               onClick={() => {
-                setPlayer(p => ({ ...p, level: p.level + 1, xp: 0 }));
+                setPlayer(p => {
+                  const nextLevel = p.level + 1;
+                  const nextMaxXp = Math.floor(p.maxXp * 1.5) + 50;
+                  const hpGain = 50 + (nextLevel * 20);
+                  return { ...p, level: nextLevel, xp: 0, maxXp: nextMaxXp, maxHp: p.maxHp + hpGain, hp: p.hp + hpGain };
+                });
                 addLog('DEV: Nível aumentado!', 'text-amber-500');
               }}
               className="bg-stone-800 hover:bg-stone-700 p-2 rounded text-xs"
@@ -53,12 +61,22 @@ export const DevPanel: React.FC<DevPanelProps> = ({
             </button>
             <button 
               onClick={() => {
-                setPlayer(p => ({ ...p, xp: p.maxXp - 1 }));
-                addLog('DEV: XP quase cheio!', 'text-amber-500');
+                setPlayer(p => ({ ...p, xp: p.xp + 1000 }));
+                addLog('DEV: +1000 XP injetado! (Ative uma magia para recalcular o nível)', 'text-amber-500');
               }}
               className="bg-stone-800 hover:bg-stone-700 p-2 rounded text-xs"
             >
-              XP Instantâneo
+              +1000 XP
+            </button>
+            <button 
+              onClick={() => {
+                setSpellCooldowns({});
+                setComboCooldowns({});
+                addLog('DEV: Cooldowns zerados (Magias e Combos)!', 'text-purple-500');
+              }}
+              className="bg-stone-800 hover:bg-stone-700 p-2 rounded text-xs"
+            >
+              0 Recargas
             </button>
             <button 
               onClick={() => {
@@ -121,6 +139,24 @@ export const DevPanel: React.FC<DevPanelProps> = ({
               className="bg-stone-800 hover:bg-stone-700 p-2 rounded text-xs"
             >
               Set Shiny
+            </button>
+            <button 
+              onClick={() => {
+                setStats(s => ({ ...s, bossesDefeated: s.bossesDefeated + 1 }));
+                addLog('DEV: Boss Defeated count + 1!', 'text-yellow-500');
+              }}
+              className="bg-stone-800 hover:bg-stone-700 p-2 rounded text-xs"
+            >
+              +1 Boss Kill
+            </button>
+            <button 
+              onClick={() => {
+                setStats(s => ({ ...s, shiniesDefeated: s.shiniesDefeated + 1 }));
+                addLog('DEV: Shiny Defeated count + 1!', 'text-yellow-500');
+              }}
+              className="bg-stone-800 hover:bg-stone-700 p-2 rounded text-xs"
+            >
+              +1 Shiny Kill
             </button>
           </div>
         </section>

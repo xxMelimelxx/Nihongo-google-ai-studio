@@ -276,12 +276,16 @@ export default function App() {
   const playerRef = useRef(player);
   const monsterRef = useRef(monster);
   const statsRef = useRef(stats);
+  const comboCooldownsRef = useRef(comboCooldowns);
   useEffect(() => { playerRef.current = player; }, [player]);
   useEffect(() => { monsterRef.current = monster; }, [monster]);
   useEffect(() => { statsRef.current = stats; }, [stats]);
+  useEffect(() => { comboCooldownsRef.current = comboCooldowns; }, [comboCooldowns]);
 
   // Unified achievements checking via useEffect to prevent multiple functional update cycles
   useEffect(() => {
+    if (!gameStarted || player.hp <= 0) return;
+    
     const checkAchievementsAsync = () => {
       const newlyUnlocked: Achievement[] = [];
       ACHIEVEMENTS_LIST.forEach(ach => {
@@ -309,9 +313,9 @@ export default function App() {
     };
     
     // We defer to avoid checking during React render phase
-    const timeout = setTimeout(checkAchievementsAsync, 10);
+    const timeout = setTimeout(checkAchievementsAsync, 30);
     return () => clearTimeout(timeout);
-  }, [player, monster, stats]);
+  }, [player, monster, stats, gameStarted]);
 
   const loadAutoSave = () => {
     const saved = localStorage.getItem('typspell_save_auto');
@@ -573,7 +577,7 @@ export default function App() {
       addLog(`Barreira protetora invocada! (+${bonusHp} HP Extra)`, 'font-bold text-gold');
     } else {
       // Normal attack
-      let atkPower = currentM.attack + (currentP.level * currentP.level * 3);
+      let atkPower = currentM.attack + (currentP.level * 10) + Math.floor(currentP.level * currentP.level * 0.5);
       if (currentM.statuses.some(s => s.type === 'weaken')) atkPower *= 0.5;
       if (isPShielded) atkPower *= 0.5;
       if (usedSkill?.type === 'attack') atkPower *= usedSkill.mult;
@@ -648,8 +652,8 @@ export default function App() {
         sequenceBonus = SEQUENCE_BONUSES.find(sb => {
           if (sb.sequence.length !== len) return false;
           
-          // Check combo cooldown
-          if ((comboCooldowns[sb.id] || 0) > 0) return false;
+          // Check combo cooldown using ref
+          if ((comboCooldownsRef.current[sb.id] || 0) > 0) return false;
 
           // Special case for Trinity (unordered)
           if (sb.id === 'trinity') {
@@ -1104,6 +1108,13 @@ export default function App() {
           const elementsSequence = potentialSpells.map(s => s.element);
           const combo = SEQUENCE_BONUSES.find(sb => {
              if (sb.sequence.length !== elementsSequence.length) return false;
+             
+             // Cooldown check
+             if ((comboCooldownsRef.current[sb.id] || 0) > 0) {
+               addLog(`O combo 【${sb.name}】 ainda está recarregando!`, 'text-red-500 italic');
+               return false;
+             }
+
              if (sb.id === 'trinity' && elementsSequence.length === 3) {
                return ['fire', 'water', 'thunder'].every(needed => elementsSequence.includes(needed as any));
              }
@@ -1409,17 +1420,6 @@ export default function App() {
                      })}
                    </div>
                  </div>
-
-                 {/* Secrets */}
-                 <div className="text-[10px] font-bold uppercase title-text border-t border-ink-dark/20 pt-2 flex flex-wrap gap-2 justify-center opacity-30 hover:opacity-100 transition-opacity">
-                     <span className="w-full text-center mb-1">Poderes Sombrios</span>
-                     <button onClick={() => setPlayer(p => ({ ...p, level: Math.min(40, p.level + 1) }))} className="hover:text-ink-red">+1 Nível</button>
-                     <button onClick={() => setPlayer(p => ({ ...p, xp: p.xp + 1000 }))} className="hover:text-ink-red">+1000 XP</button>
-                     <button onClick={() => setPlayer(p => ({ ...p, hp: p.maxHp }))} className="hover:text-green-700">Curar</button>
-                     <button onClick={() => setSpellCooldowns({})} className="hover:text-purple-700">0 Recargas</button>
-                     <button onClick={() => setMonster(m => m ? ({ ...m, currentHp: 0 }) : null)} className="hover:text-red-700">Kill</button>
-                     <button onClick={() => setShowDevPanel(true)} className="hover:text-amber-500 font-bold ml-2 underline">Abrir Painel Dev</button>
-                 </div>
                </motion.div>
              </div>
            )}
@@ -1685,6 +1685,9 @@ export default function App() {
               monster={monster}
               setPlayer={setPlayer}
               setMonster={setMonster}
+              setSpellCooldowns={setSpellCooldowns}
+              setComboCooldowns={setComboCooldowns}
+              setStats={setStats}
               addLog={addLog}
               resetGame={resetGame}
               onClose={() => setShowDevPanel(false)}
