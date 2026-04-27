@@ -25,12 +25,13 @@ interface SpellbookProps {
   level: number;
   unlockedCount: number;
   spellCooldowns: Record<string, number>;
+  comboCooldowns: Record<string, number>;
   discoveredCombos: string[];
   onOpenCombos: () => void;
   onClose: () => void;
 }
 
-export default function Spellbook({ level, unlockedCount, spellCooldowns, discoveredCombos, onOpenCombos, onClose }: SpellbookProps) {
+export default function Spellbook({ level, unlockedCount, spellCooldowns, comboCooldowns, discoveredCombos, onOpenCombos, onClose }: SpellbookProps) {
   const [expandedSealed, setExpandedSealed] = useState<Record<string, boolean>>({});
   const [hideUnknown, setHideUnknown] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -132,7 +133,12 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, discov
       'paralyze': 'Paralisar (Perde o turno)', 'weaken': 'Enfraquecer (-Ataque)',
       'shield': 'Proteger (Dano recebido -50%)', 'regen': 'Regenerar (Cura por turno)', 'blind': 'Cegar (Erra ataques)',
       'poison': 'Envenenar (Dano Contínuo)', 'hint': 'Sugere um feitiço pronto', 'cleanse': 'Remove maldições',
-      'reduce_cd': 'Reduz todos Cooldowns em -2', 'force_bonus': 'Revela Ponto Fraco (!)', 'damage_buff': 'Aumento de Dano'
+      'reduce_cd': 'Reduz todos Cooldowns em -2', 'force_bonus': 'Revela Ponto Fraco (!)', 'damage_buff': 'Aumento de Dano',
+      'reveal_combo': 'Revela um novo combo secreto', 'reveal_2_combos': 'Revela 2 combos secretos', 
+      'predict_attack': 'Prevê o próximo golpe inimigo', 'show_weakness': 'Mostra fraquezas do alvo', 
+      'boss_eye': 'Revela HP e Atributos exatos', 'echo_next': 'Magia seguinte é conjurada 2x', 
+      'autocomplete_next': 'Autocompletar próxima magia', 'ignore_typo_next': 'Ignora erros de digitação', 
+      'combo_window_up': 'Aumenta janela de tempo de combos'
     };
     const durationStr = vocab.effectDuration ? ` (${vocab.effectDuration}t)` : '';
     return (
@@ -276,6 +282,30 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, discov
              <div className="h-full flex flex-col items-center justify-center opacity-70 title-text">
                <span className="text-3xl mb-4 grayscale">📖</span>
                <span className="text-xl uppercase font-bold text-[#3b2a21]/70">Fim do Grimório</span>
+               
+               {discoveredCombos.length > 0 && (
+                 <div className="mt-8 w-full px-4">
+                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#3b2a21]/50 mb-4 text-center border-b border-[#3b2a21]/10 pb-1">Status de Alquimia</h4>
+                   <div className="grid grid-cols-1 gap-2">
+                     {SEQUENCE_BONUSES.filter(sb => discoveredCombos.includes(sb.id)).slice(0, 4).map(combo => {
+                       const cd = comboCooldowns[combo.id] || 0;
+                       return (
+                         <div key={combo.id} className="flex justify-between items-center text-[11px] bg-white/30 p-2 rounded-sm border border-[#3b2a21]/5">
+                           <span className="font-bold opacity-80 uppercase">{combo.name}</span>
+                           {cd > 0 ? (
+                             <span className="text-red-700 font-black animate-pulse">⏳ {cd}T</span>
+                           ) : (
+                             <span className="text-green-700 font-black uppercase">Pronto</span>
+                           )}
+                         </div>
+                       );
+                     })}
+                     {discoveredCombos.length > 4 && (
+                       <p className="text-[9px] text-center italic mt-2 opacity-50">... e outros. Veja as anotações para detalhes.</p>
+                     )}
+                   </div>
+                 </div>
+               )}
              </div>
           ) : (
             renderCategory(key)
@@ -288,7 +318,7 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, discov
         </div>
       </div>
     );
-  }, [totalSpreads, elementKeys, level, unlockedCount, VOCABULARY, grouped, hideUnknown, expandedSealed]);
+  }, [totalSpreads, elementKeys, level, unlockedCount, grouped, hideUnknown, expandedSealed, spellCooldowns, comboCooldowns, discoveredCombos]);
 
   const renderRightPage = useCallback((spreadIndex: number) => {
     const isEnd = spreadIndex >= totalSpreads;
@@ -354,7 +384,7 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, discov
         </div>
       </div>
     );
-  }, [totalSpreads, elementKeys, grouped, hideUnknown, onClose]);
+  }, [totalSpreads, elementKeys, grouped, hideUnknown, level, unlockedCount, expandedSealed, spellCooldowns, onClose]);
 
   const sparks = useMemo(() => {
     return Array.from({ length: 10 }).map((_, i) => (
@@ -516,10 +546,6 @@ export default function Spellbook({ level, unlockedCount, spellCooldowns, discov
         {/* Flippable Sheets */}
         {Array.from({ length: totalSpreads }).map((_, sheetIndex) => {
            const isFlipped = sheetIndex < currentPage;
-           // PERFORMANCE FIX: Only render sheets that are the current view or currently flipping
-           const isVisible = Math.abs(sheetIndex - currentPage) <= 1;
-           if (!isVisible) return null;
-
            const zIndex = isFlipped ? sheetIndex + 10 : (totalSpreads - sheetIndex) + 10;
            
            return (

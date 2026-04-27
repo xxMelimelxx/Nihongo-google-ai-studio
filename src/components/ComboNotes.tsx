@@ -4,10 +4,11 @@ import { ElementType } from '../types';
 
 interface ComboNotesProps {
   discoveredCombos: string[];
+  comboCooldowns: Record<string, number>;
   onClose: () => void;
 }
 
-export default function ComboNotes({ discoveredCombos, onClose }: ComboNotesProps) {
+export default function ComboNotes({ discoveredCombos, comboCooldowns, onClose }: ComboNotesProps) {
   const combos = SEQUENCE_BONUSES.filter(sb => discoveredCombos.includes(sb.id));
 
   return (
@@ -56,17 +57,26 @@ export default function ComboNotes({ discoveredCombos, onClose }: ComboNotesProp
             </div>
           ) : (
             <div className="space-y-6 pb-6">
-              {combos.map((combo) => (
-                <motion.div 
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  key={combo.id}
-                  className="relative group bg-white/20 p-4 border-l-4 border-purple-500 rounded-r-lg"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="title-text text-lg font-bold text-purple-900 uppercase">{combo.name}</span>
-                    <span className="text-[9px] font-bold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">NOVO</span>
-                  </div>
+              {combos.map((combo) => {
+                const cooldown = comboCooldowns[combo.id] || 0;
+                return (
+                  <motion.div 
+                    initial={{ x: -10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    key={combo.id}
+                    className={`relative group p-4 border-l-4 rounded-r-lg transition-all ${cooldown > 0 ? 'bg-gray-100 border-gray-400 opacity-60' : 'bg-white/20 border-purple-500'}`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`title-text text-lg font-bold uppercase ${cooldown > 0 ? 'text-gray-500' : 'text-purple-900'}`}>{combo.name}</span>
+                        {cooldown > 0 && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-200 animate-pulse">
+                            ⏳ {cooldown}T
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">NOVO</span>
+                    </div>
                   
                   <div className="flex gap-2 mb-3">
                     {combo.sequence.map((el, i) => (
@@ -85,8 +95,9 @@ export default function ComboNotes({ discoveredCombos, onClose }: ComboNotesProp
                      </span>
                   </div>
                 </motion.div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
           )}
         </div>
 

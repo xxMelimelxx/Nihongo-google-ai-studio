@@ -5,9 +5,11 @@ interface OverlayProps {
   score: number;
   level: number;
   onRestart: () => void;
+  onLoadSave?: () => void;
+  hasSave?: boolean;
 }
 
-export default function Overlay({ show, title, desc, score, level, onRestart }: OverlayProps) {
+export default function Overlay({ show, title, desc, score, level, onRestart, onLoadSave, hasSave }: OverlayProps) {
   if (!show) return null;
 
   return (
@@ -24,12 +26,23 @@ export default function Overlay({ show, title, desc, score, level, onRestart }: 
           <div className="font-bold text-ink-blue mb-2">Inimigos Derrotados: {score}</div>
           <div className="font-bold text-ink-green">Nível Alcançado: {level}</div>
         </div>
-        <button 
-          onClick={onRestart}
-          className="grimoire-btn btn-crimson w-full py-4 text-lg"
-        >
-          Escrever Nova História
-        </button>
+        
+        <div className="flex flex-col gap-3">
+          {hasSave && onLoadSave && (
+            <button 
+              onClick={onLoadSave}
+              className="grimoire-btn btn-blue w-full py-4 text-lg"
+            >
+              Recuperar Memórias (Auto-Save)
+            </button>
+          )}
+          <button 
+            onClick={onRestart}
+            className="grimoire-btn btn-crimson w-full py-4 text-lg opacity-80 hover:opacity-100"
+          >
+            {hasSave ? "Apagar Livro e Recomeçar" : "Escrever Nova História"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -30,6 +30,8 @@ import ComboNotes from './components/ComboNotes';
 import { ACHIEVEMENTS_LIST, Achievement } from './achievements';
 import { AchievementPopup } from './components/AchievementPopup';
 import AchievementsModal from './components/AchievementsModal';
+import { DevPanel } from './components/DevPanel';
+import HPBar from './components/HPBar';
 import Overlay from './components/Overlay';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -37,39 +39,6 @@ import { twMerge } from 'tailwind-merge';
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-const HPBar = ({ current, max, colorClass, isMonster = false }: { current: number, max: number, colorClass?: string, isMonster?: boolean }) => {
-  const percentage = Math.max(0, Math.min(100, (current / max) * 100));
-  
-  return (
-    <div className="w-full">
-      <div className="flex justify-between items-end mb-1">
-        <span className="font-bold text-[10px] uppercase tracking-widest title-text opacity-70">
-          HP {isMonster ? 'DO MONSTRO' : 'ATUAL'}
-        </span>
-        <span className="font-mono text-sm font-bold">
-          {Math.ceil(current)} / {max}
-        </span>
-      </div>
-      <div className="relative h-4 bg-ink-dark/10 border-2 border-ink-dark/40 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]">
-        {/* Ghost bar lagging behind */}
-        <motion.div 
-          className="absolute inset-0 bg-ink-red/30"
-          initial={false}
-          animate={{ width: `${percentage}%` }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-        />
-        {/* Main bar */}
-        <motion.div 
-          className={cn("absolute inset-0", colorClass || "bg-ink-dark")}
-          initial={false}
-          animate={{ width: `${percentage}%` }}
-          transition={{ duration: 0.4, ease: "circOut" }}
-        />
-      </div>
-    </div>
-  );
-};
 
 const SpellEffectOverlay = ({ element }: { element: ElementType | null }) => {
   if (!element) return null;
@@ -176,6 +145,18 @@ export default function App() {
   const [showSpellbook, setShowSpellbook] = useState(false);
   const [showComboNotes, setShowComboNotes] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [showDevPanel, setShowDevPanel] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Secret combo: Ctrl + Alt + D
+      if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+        setShowDevPanel(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const [overlayData, setOverlayData] = useState({ show: false, title: '', desc: '' });
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [monsterSpeech, setMonsterSpeech] = useState<string | null>(null);
@@ -184,6 +165,7 @@ export default function App() {
   const [showJpName, setShowJpName] = useState(false);
   const [spellCooldowns, setSpellCooldowns] = useState<Record<string, number>>({});
   const [comboCooldowns, setComboCooldowns] = useState<Record<string, number>>({});
+  const [comboUsageCount, setComboUsageCount] = useState<Record<string, number>>({});
   const [activeEffect, setActiveEffect] = useState<ElementType | null>(null);
   const [recentElements, setRecentElements] = useState<ElementType[]>([]);
   const recentElementsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -192,10 +174,16 @@ export default function App() {
     if (recentElementsTimeoutRef.current) {
       clearTimeout(recentElementsTimeoutRef.current);
     }
+    const hasWindowUp = player.statuses.some(s => s.type === 'combo_window_up');
+    const windowTime = hasWindowUp ? 10000 : 4000;
+    
     recentElementsTimeoutRef.current = setTimeout(() => {
       setRecentElements([]);
-    }, 4000);
-  }, []);
+      if (hasWindowUp) {
+        setPlayer(p => ({ ...p, statuses: p.statuses.filter(s => s.type !== 'combo_window_up') }));
+      }
+    }, windowTime);
+  }, [player.statuses]);
 
   useEffect(() => {
     if (recentElements.length > 0) {
@@ -281,46 +269,67 @@ export default function App() {
     setCurrentAchievement(null);
   }, []);
 
-  const checkAchievements = useCallback((p: Player, m?: Monster | null, s?: any) => {
-    const newlyUnlocked: Achievement[] = [];
-    ACHIEVEMENTS_LIST.forEach(ach => {
-      if (!p.achievements.includes(ach.id)) {
-        try {
-          if (ach.condition(p, m, s)) {
-            newlyUnlocked.push(ach);
-          }
-        } catch (e) {
-          // ignore error if condition fails safely
-        }
-      }
-    });
-
-    if (newlyUnlocked.length > 0) {
-      setPlayer(prev => ({ ...prev, achievements: [...prev.achievements, ...newlyUnlocked.map(a => a.id)] }));
-      setAchievementQueue(prev => [...prev, ...newlyUnlocked]);
-    }
-  }, []);
-
   const sparkContainerRef = useRef<HTMLDivElement>(null);
   const battleIdRef = useRef(0);
+  
+  // Refs to tracking latest state to avoid stale closures in async logic
+  const playerRef = useRef(player);
+  const monsterRef = useRef(monster);
+  const statsRef = useRef(stats);
+  useEffect(() => { playerRef.current = player; }, [player]);
+  useEffect(() => { monsterRef.current = monster; }, [monster]);
+  useEffect(() => { statsRef.current = stats; }, [stats]);
+
+  // Unified achievements checking via useEffect to prevent multiple functional update cycles
+  useEffect(() => {
+    const checkAchievementsAsync = () => {
+      const newlyUnlocked: Achievement[] = [];
+      ACHIEVEMENTS_LIST.forEach(ach => {
+        if (!player.achievements.includes(ach.id)) {
+          try {
+            if (ach.condition(player, monster, stats)) {
+              newlyUnlocked.push(ach);
+            }
+          } catch (e) { }
+        }
+      });
+
+      if (newlyUnlocked.length > 0) {
+        setPlayer(prev => {
+          const reallyNew = newlyUnlocked.filter(a => !prev.achievements.includes(a.id));
+          if (reallyNew.length === 0) return prev;
+          
+          setAchievementQueue(q => {
+            const queuesNew = reallyNew.filter(a => !q.some(qa => qa.id === a.id));
+            return [...q, ...queuesNew];
+          });
+          return { ...prev, achievements: [...prev.achievements, ...reallyNew.map(a => a.id)] };
+        });
+      }
+    };
+    
+    // We defer to avoid checking during React render phase
+    const timeout = setTimeout(checkAchievementsAsync, 10);
+    return () => clearTimeout(timeout);
+  }, [player, monster, stats]);
 
   const loadAutoSave = () => {
-    try {
-      const data = localStorage.getItem('typspell_save_auto');
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (parsed.player) {
-          battleIdRef.current += 1;
-          setIsAnimating(false);
-          setPlayer({ ...INITIAL_PLAYER, ...parsed.player });
-          setPlayerName(parsed.playerName || '');
-          setMonsterIndex(parsed.monsterIndex || 0);
-          spawnMonster(parsed.monsterIndex || 0);
-          setGameStarted(true);
-        }
+    const saved = localStorage.getItem('typspell_save_auto');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        battleIdRef.current += 1;
+        setIsAnimating(false);
+        setPlayer(parsed.player);
+        setPlayerName(parsed.playerName || '');
+        setMonsterIndex(parsed.monsterIndex || 0);
+        if (parsed.stats) setStats(parsed.stats);
+        spawnMonster(parsed.monsterIndex || 0);
+        setOverlayData(prev => ({ ...prev, show: false }));
+        addLog("Memórias recuperadas do último registro automático.", "text-blue-800 font-bold");
+      } catch (e) {
+        console.error("Failed to load auto-save", e);
       }
-    } catch(e) {
-      console.error(e);
     }
   };
 
@@ -352,6 +361,7 @@ export default function App() {
   }, []);
 
   const spawnMonster = (index: number) => {
+    battleIdRef.current += 1;
     if (index >= MONSTERS_LIST.length) {
       setOverlayData({
         show: true,
@@ -362,8 +372,8 @@ export default function App() {
     }
 
     const template = MONSTERS_LIST[index];
-    // Variações agora são raras (apenas 5% de chance)
-    const shouldHaveVariation = Math.random() < 0.05;
+    // Variações agora são muito raras (apenas 2% de chance)
+    const shouldHaveVariation = Math.random() < 0.02;
     const variation = shouldHaveVariation ? getMonsterVariation(template.name) : { name: template.name, translation: undefined };
     
     // Shiny chance (10%)
@@ -522,9 +532,11 @@ export default function App() {
     return canAct;
   };
 
-  const monsterTurnLogic = async (currentM: Monster, currentP: Player) => {
+  const monsterTurnLogic = async () => {
     const startBattleId = battleIdRef.current;
-    if (currentM.currentHp <= 0 || currentP.hp <= 0) return;
+    const currentM = monsterRef.current;
+    const currentP = playerRef.current;
+    if (!currentM || currentM.currentHp <= 0 || currentP.hp <= 0) return;
 
     const canAct = await processStatuses(false);
     if (!canAct || startBattleId !== battleIdRef.current) return;
@@ -571,17 +583,7 @@ export default function App() {
         const nextHp = Math.max(0, p.hp - damage);
         if (nextHp <= 0 && p.hp > 0) {
            setStats(s => {
-             const nextStats = { ...s, deaths: s.deaths + 1 };
-             setTimeout(() => {
-               setPlayer(updatedP => {
-                 setStats(updatedS => {
-                   checkAchievements(updatedP, currentM, updatedS);
-                   return updatedS;
-                 });
-                 return updatedP;
-               });
-             }, 500);
-             return nextStats;
+             return { ...s, deaths: s.deaths + 1 };
            });
            localStorage.removeItem('typspell_save_auto'); // Optional: reset save or not? Actually no need to clear save, they can reload.
         }
@@ -666,17 +668,92 @@ export default function App() {
       addLog(`✨ COMBO: 【${sequenceBonus.name}】! ${sequenceBonus.msg}`, 'text-purple-600 font-bold text-lg animate-pulse');
       
       // COMBO DELAY for impact
-      await delay(600);
+      await delay(1000);
 
       // Set combo cooldown (increased as requested)
       const baseCd = sequenceBonus.sequence.length === 2 ? 8 : 15;
-      setComboCooldowns(prev => ({ ...prev, [sequenceBonus.id]: baseCd }));
+      
+      setComboUsageCount(prev => {
+        const count = (prev[sequenceBonus.id] || 0) + 1;
+        // Increase cooldown by 1 for every two times used (starts after first 2 uses)
+        const extraCd = Math.floor((count - 1) / 2);
+        
+        setComboCooldowns(prevCd => ({ 
+          ...prevCd, 
+          [sequenceBonus.id]: baseCd + extraCd 
+        }));
+        
+        return { ...prev, [sequenceBonus.id]: count };
+      });
 
       if (sequenceBonus.bonus === 'damage') { /* handled via mult below */ }
       if (sequenceBonus.bonus === 'heal') { /* handled via mult below */ }
       if (sequenceBonus.bonus === 'paralyze') applyStatus('monster', 'paralyze', sequenceBonus.duration || 1);
       if (sequenceBonus.bonus === 'shield') applyStatus('player', 'shield', sequenceBonus.duration || 3);
       if (sequenceBonus.bonus === 'regen') applyStatus('player', 'regen', sequenceBonus.duration || 3);
+      if (sequenceBonus.bonus === 'blind') applyStatus('monster', 'blind', sequenceBonus.duration || 3);
+      if (sequenceBonus.bonus === 'damage_buff') applyStatus('player', 'damage_buff', sequenceBonus.duration || 2);
+      
+      if (sequenceBonus.bonus === 'reveal_combo' || sequenceBonus.bonus === 'reveal_2_combos') {
+        const count = sequenceBonus.bonus === 'reveal_2_combos' ? 2 : 1;
+        const undiscovered = SEQUENCE_BONUSES.filter(sb => !player.discoveredCombos.includes(sb.id));
+        if (undiscovered.length > 0) {
+          setPlayer(p => {
+            const currentUndiscovered = SEQUENCE_BONUSES.filter(sb => !p.discoveredCombos.includes(sb.id));
+            if (currentUndiscovered.length === 0) return p;
+            
+            const count = sequenceBonus.bonus === 'reveal_2_combos' ? 2 : 1;
+            const revealedIds: string[] = [];
+            for (let i = 0; i < count; i++) {
+              if (currentUndiscovered.length > 0) {
+                const idx = Math.floor(Math.random() * currentUndiscovered.length);
+                const pick = currentUndiscovered.splice(idx, 1)[0];
+                revealedIds.push(pick.id);
+              }
+            }
+            addLog(`💡 Você teve uma epifania! Descobriu os combos: ${revealedIds.map(id => SEQUENCE_BONUSES.find(s => s.id === id)?.name).join(', ')}`, 'text-gold font-bold');
+            return { ...p, discoveredCombos: [...p.discoveredCombos, ...revealedIds] };
+          });
+        }
+      }
+
+      if (sequenceBonus.bonus === 'show_weakness') {
+        const elements: ElementType[] = ['fire', 'water', 'thunder', 'wind', 'nature', 'light', 'arcane', 'void'];
+        const weak = elements[Math.floor(Math.random() * elements.length)];
+        addLog(`🎯 Ponto Fraco: O inimigo parece vulnerável ao elemento 【${weak.toUpperCase()}】!`, 'text-orange-600 font-bold');
+      }
+
+      if (sequenceBonus.bonus === 'predict_attack') {
+        const skills = monster.skills;
+        if (skills.length > 0) {
+          const nextSkillKey = skills[Math.floor(Math.random() * skills.length)];
+          const skill = ENEMY_SKILLS_POOL[nextSkillKey];
+          addLog(`🔮 Visão do Futuro: O inimigo planeja usar 【${skill.name}】!`, 'text-purple-600 font-bold');
+        } else {
+          addLog(`🔮 Visão do Futuro: O inimigo atacará fisicamente.`, 'text-purple-600 font-bold');
+        }
+      }
+
+      if (sequenceBonus.bonus === 'boss_eye') {
+        addLog(`👁️ Olho da Verdade: O inimigo tem ${monster.currentHp}/${monster.maxHp} HP e seu ataque base é ${monster.attack}.`, 'text-indigo-800 font-bold');
+      }
+
+      if (sequenceBonus.bonus === 'hint') {
+        const available = VOCABULARY.filter(v => 
+          player.level >= v.unlockLevel && 
+          (spellCooldowns[v.pt] || 0) === 0
+        );
+        if (available.length > 0) {
+          const hint = available[Math.floor(Math.random() * available.length)];
+          addLog(`💡 Epifania: Você visualiza o feitiço 【${hint.pt}】 (${hint.romaji}) surgindo no ar!`, 'font-bold text-gold');
+        }
+      }
+
+      if (sequenceBonus.bonus === 'autocomplete_next' || sequenceBonus.bonus === 'ignore_typo_next' || sequenceBonus.bonus === 'echo_next' || sequenceBonus.bonus === 'combo_window_up') {
+        applyStatus('player', sequenceBonus.bonus as StatusType, 1);
+        addLog(`✨ Efeito utilitário preparado para a próxima conjuração!`, 'text-cyan-600 font-bold');
+      }
+
       if (sequenceBonus.bonus === 'reduce_cd') {
         setSpellCooldowns({}); // Correctly resets cooldowns in state
         addLog(`As recargas de todas as magias foram zeradas!`, 'text-blue-500 font-bold');
@@ -699,7 +776,24 @@ export default function App() {
       return nextStats;
     });
 
-    if (spell.type === 'heal') {
+    let hasEcho = player.statuses.some(s => s.type === 'echo_next');
+    if (hasEcho) {
+      addLog(`📢 Eko: Resonância detectada! O feitiço ecoa em dobro!`, 'text-cyan-600 font-bold italic');
+      setPlayer(p => ({ ...p, statuses: p.statuses.filter(s => s.type !== 'echo_next') }));
+    }
+
+    const castCount = hasEcho ? 2 : 1;
+
+    for (let c = 0; c < castCount; c++) {
+      // Functional update to check latest monster state within loop
+      let monsterIsDead = false;
+      setMonster(m => {
+        if (!m || m.currentHp <= 0) monsterIsDead = true;
+        return m;
+      });
+      if (monsterIsDead) break;
+
+      if (spell.type === 'heal') {
       let healMult = (isBonus ? 2 : 1);
       if (sequenceBonus?.bonus === 'heal') healMult *= sequenceBonus.mult || 1.5;
       const heal = Math.floor((spell.power + (player.level * 40)) * healMult);
@@ -773,6 +867,41 @@ export default function App() {
       } else if (spell.effect === 'force_bonus') {
         setMonster(m => m ? ({ ...m, bonusActive: true }) : null);
         addLog(`🎯 Ponto Fraco Identificado! Próxima palavra combinada dará dano massivo!`, 'text-gold font-bold');
+      } else if (spell.effect === 'reveal_combo' || spell.effect === 'reveal_2_combos') {
+        const count = spell.effect === 'reveal_2_combos' ? 2 : 1;
+        setPlayer(p => {
+          const currentUndiscovered = SEQUENCE_BONUSES.filter(sb => !p.discoveredCombos.includes(sb.id));
+          if (currentUndiscovered.length === 0) return p;
+          
+          const revealedIds: string[] = [];
+          const tempUndiscovered = [...currentUndiscovered];
+          for (let i = 0; i < count; i++) {
+            if (tempUndiscovered.length > 0) {
+              const idx = Math.floor(Math.random() * tempUndiscovered.length);
+              const pick = tempUndiscovered.splice(idx, 1)[0];
+              revealedIds.push(pick.id);
+            }
+          }
+          addLog(`💡 Conhecimento Ancestral! Descobriu os combos: ${revealedIds.map(id => SEQUENCE_BONUSES.find(s => s.id === id)?.name).join(', ')}`, 'text-gold font-bold');
+          return { ...p, discoveredCombos: [...p.discoveredCombos, ...revealedIds] };
+        });
+      } else if (spell.effect === 'predict_attack') {
+        if (monster.skills && monster.skills.length > 0) {
+          const nextSkillKey = monster.skills[Math.floor(Math.random() * monster.skills.length)];
+          const skill = ENEMY_SKILLS_POOL[nextSkillKey];
+          addLog(`🔮 Olho do Futuro: O inimigo planeja usar 【${skill.name}】!`, 'text-purple-600 font-bold');
+        } else {
+          addLog(`🔮 Olho do Futuro: O inimigo atacará fisicamente.`, 'text-purple-600 font-bold');
+        }
+      } else if (spell.effect === 'show_weakness') {
+        const elements: ElementType[] = ['fire', 'water', 'thunder', 'wind', 'nature', 'light', 'arcane', 'void'];
+        const weak = elements[Math.floor(Math.random() * elements.length)];
+        addLog(`🎯 Insight: O inimigo parece vulnerável ao elemento 【${weak.toUpperCase()}】!`, 'text-orange-600 font-bold');
+      } else if (spell.effect === 'boss_eye') {
+        addLog(`👁️ Percepção Aguçada: O inimigo tem ${monster.currentHp}/${monster.maxHp} HP e seu ataque base é ${monster.attack}.`, 'text-indigo-800 font-bold');
+      } else if (['autocomplete_next', 'ignore_typo_next', 'echo_next', 'combo_window_up'].includes(spell.effect)) {
+        applyStatus('player', spell.effect as StatusType, 1);
+        addLog(`✨ Canalização Concluída: O fluxo mágico foi alterado!`, 'text-cyan-600 font-bold italic');
       }
     }
 
@@ -795,25 +924,18 @@ export default function App() {
         }
       }
     }
-
-    // Call achievements async after state updates
-    setTimeout(() => {
-      setPlayer(updatedP => {
-        setStats(updatedS => {
-           checkAchievements(updatedP, monster, updatedS);
-           return updatedS;
-        });
-        return updatedP;
-      });
-    }, 100);
+  }
 
     await delay(1000);
     if (startBattleId !== undefined && startBattleId !== battleIdRef.current) return;
 
     // Check if monster dies
     setMonster(m => {
-       if (m && m.currentHp <= 0) {
+       if (m && m.currentHp <= 0 && !m.isDying) {
            const reward = m.xpReward;
+           // Mark as dying to prevent multiple triggers
+           const dyingMonster: Monster = { ...m, isDying: true };
+           
            addLog(`Riscou o inimigo! Derrotou o ${m.name}!`, 'text-ink-blue font-bold text-lg');
            addLog(`Absorveu +${reward} XP!`, 'text-ink-dark/60 font-bold');
            
@@ -838,41 +960,31 @@ export default function App() {
              return nextStats;
            });
 
-           // Final achievement check for monster death
-           setTimeout(() => {
-             setPlayer(updatedP => {
-               setStats(updatedS => {
-                 checkAchievements(updatedP, m, updatedS);
-                 return updatedS;
-               });
-               return updatedP;
-             });
-           }, 500);
-
             setTimeout(() => {
               setPlayer(latestP => {
                   setMonsterIndex(idx => {
                     const nextIdx = idx + 1;
-                    spawnMonster(nextIdx);
+                    setTimeout(() => spawnMonster(nextIdx), 0);
                     // AUTO SAVE AT THE EXACT MOMENT OF NEXT MONSTER
                     localStorage.setItem('typspell_save_auto', JSON.stringify({
                        player: latestP,
                        playerName,
                        monsterIndex: nextIdx,
+                       stats: stats,
                     }));
                     return nextIdx;
                   });
                   return latestP;
               });
             }, 1000);
-            return null;
+            return dyingMonster;
        }
        return m;
     });
   };
 
   const submitAnswer = async () => {
-    if (isAnimating || !monster) return;
+    if (isAnimating || !monster || monster.currentHp <= 0) return;
     
     const currentBattleId = battleIdRef.current;
 
@@ -916,16 +1028,49 @@ export default function App() {
       showMonsterSpeech(customSpeech);
       setStats(s => ({ ...s, consecutiveHits: 0 }));
       await delay(1200);
-      await monsterTurnLogic(monster, player);
+      await monsterTurnLogic();
       setIsAnimating(false);
       return;
     }
 
+    const hasAutocomplete = player.statuses.some(s => s.type === 'autocomplete_next');
+    const hasIgnoreTypo = player.statuses.some(s => s.type === 'ignore_typo_next');
+    const hasEcho = player.statuses.some(s => s.type === 'echo_next');
+
     const spell = VOCABULARY.find(v => {
       if (player.level < v.unlockLevel) return false;
       const r = v.romaji.replace(/\s+/g, '');
-      return val === r || val === v.kana || val === v.kanji || wanakana.toHiragana(val) === v.kana;
+      
+      // Standard match
+      if (val === r || val === v.kana || val === v.kanji || wanakana.toHiragana(val) === v.kana) return true;
+      
+      // Autocomplete: First and last letter match
+      if (hasAutocomplete && val.length >= 2 && r.length >= 3) {
+        if (val[0] === r[0] && val[val.length - 1] === r[r.length - 1]) return true;
+      }
+
+      // Ignore Typo: Levenshtein distance 1 (approximation)
+      if (hasIgnoreTypo && val.length === r.length && val.length > 2) {
+        let errors = 0;
+        for (let i = 0; i < val.length; i++) {
+          if (val[i] !== r[i]) errors++;
+        }
+        if (errors === 1) return true;
+      }
+      
+      return false;
     });
+
+    if (spell && (hasAutocomplete || hasIgnoreTypo)) {
+      if (hasAutocomplete) addLog(`⌨️ Ryūsei: Magia autocompletada com sucesso!`, 'text-cyan-500 italic');
+      if (hasIgnoreTypo) addLog(`🛡️ Tateba: Erro de digitação ignorado!`, 'text-cyan-500 italic');
+      
+      // Remove status after use
+      setPlayer(p => ({
+        ...p,
+        statuses: p.statuses.filter(s => s.type !== 'autocomplete_next' && s.type !== 'ignore_typo_next')
+      }));
+    }
 
     let isBonus = false;
     let finalSpell = spell;
@@ -978,13 +1123,13 @@ export default function App() {
             const lastSpell = potentialSpells[potentialSpells.length - 1];
             
             setActiveEffect(lastSpell.element);
-            setTimeout(() => setActiveEffect(null), 1000);
+            setTimeout(() => setActiveEffect(null), 1500);
             
             // Cast the last spell but with the specific element sequence
             await executePlayerAction(lastSpell, isBonus, currentBattleId, allButLast);
             
             if (monster && monster.currentHp > 0) {
-              await monsterTurnLogic(monster, player);
+              await monsterTurnLogic();
             }
             
             setIsAnimating(false);
@@ -1029,7 +1174,7 @@ export default function App() {
       }
       
       await delay(800);
-      await monsterTurnLogic(monster, player);
+      await monsterTurnLogic();
       setIsAnimating(false);
       return;
     }
@@ -1077,13 +1222,13 @@ export default function App() {
       } else {
         setActiveEffect(finalSpell.element);
         setStats(s => ({ ...s, consecutiveHits: s.consecutiveHits + 1 }));
-        setTimeout(() => setActiveEffect(null), 1000);
+        setTimeout(() => setActiveEffect(null), 1500);
         await executePlayerAction(finalSpell, isBonus, currentBattleId);
       }
     }
 
     if (monster && monster.currentHp > 0) {
-      await monsterTurnLogic(monster, player);
+      await monsterTurnLogic();
     }
 
     setIsAnimating(false);
@@ -1129,11 +1274,14 @@ export default function App() {
   };
 
   const resetGame = () => {
+    localStorage.removeItem('typspell_save_auto');
     setPlayer(INITIAL_PLAYER);
     setMonsterIndex(0);
     setLogs([]);
     setOverlayData({ show: false, title: '', desc: '' });
     setSpellCooldowns({});
+    setComboCooldowns({});
+    setComboUsageCount({});
     spawnMonster(0);
   };
 
@@ -1270,6 +1418,7 @@ export default function App() {
                      <button onClick={() => setPlayer(p => ({ ...p, hp: p.maxHp }))} className="hover:text-green-700">Curar</button>
                      <button onClick={() => setSpellCooldowns({})} className="hover:text-purple-700">0 Recargas</button>
                      <button onClick={() => setMonster(m => m ? ({ ...m, currentHp: 0 }) : null)} className="hover:text-red-700">Kill</button>
+                     <button onClick={() => setShowDevPanel(true)} className="hover:text-amber-500 font-bold ml-2 underline">Abrir Painel Dev</button>
                  </div>
                </motion.div>
              </div>
@@ -1306,7 +1455,7 @@ export default function App() {
                        onClick={() => setShowJpName(!showJpName)}
                        className={cn("handwriting text-2xl md:text-3xl font-black cursor-pointer border-b border-dashed border-ink-dark/30 tracking-wide uppercase", monster?.color || "text-ink-dark")}
                      >
-                       {monster?.variationName || monster?.name || '---'}
+                       {monster?.variationName || monster?.name || '---'} {monster?.isShiny && <span className="text-yellow-500 text-xl animate-pulse">✨</span>}
                      </span>
                      {showJpName && monster && (
                        <div className="jp-text absolute bottom-[120%] left-0 text-sm mb-2 bg-[#d3c4ad] border border-ink-dark/30 px-3 py-2 shadow-md whitespace-nowrap z-50 font-bold opacity-90 flex flex-col gap-1">
@@ -1490,6 +1639,7 @@ export default function App() {
             level={player.level} 
             unlockedCount={VOCABULARY.filter(v => player.level >= v.unlockLevel).length}
             spellCooldowns={spellCooldowns}
+            comboCooldowns={comboCooldowns}
             discoveredCombos={player.discoveredCombos}
             onOpenCombos={() => setShowComboNotes(true)}
             onClose={() => setShowSpellbook(false)}
@@ -1500,6 +1650,7 @@ export default function App() {
           {showComboNotes && (
             <ComboNotes 
               discoveredCombos={player.discoveredCombos}
+              comboCooldowns={comboCooldowns}
               onClose={() => setShowComboNotes(false)}
             />
           )}
@@ -1518,12 +1669,28 @@ export default function App() {
           score={player.monstersDefeated}
           level={player.level}
           onRestart={resetGame}
+          onLoadSave={loadAutoSave}
+          hasSave={!!localStorage.getItem('typspell_save_auto')}
         />
         
         <AchievementPopup 
           achievement={currentAchievement} 
           onClose={closeAchievement}
         />
+
+        <AnimatePresence>
+          {showDevPanel && (
+            <DevPanel 
+              player={player}
+              monster={monster}
+              setPlayer={setPlayer}
+              setMonster={setMonster}
+              addLog={addLog}
+              resetGame={resetGame}
+              onClose={() => setShowDevPanel(false)}
+            />
+          )}
+        </AnimatePresence>
 
       </div>
       )}

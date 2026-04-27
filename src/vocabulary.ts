@@ -257,5 +257,16 @@ export const VOCABULARY: Spell[] = [
   { pt: "Afiamento", romaji: "kenma", kana: "けんま", kanji: "研磨", power: 0, type: "status", element: "metal", unlockLevel: 17, cooldown: 6, currentCooldown: 0, effect: 'damage_buff', effectChance: 1.0, effectDuration: 3, effectTarget: 'self' },
   { pt: "Resplendor", romaji: "kouki", kana: "こうき", kanji: "光輝", power: 0, type: "utility", element: "light", unlockLevel: 25, cooldown: 9, currentCooldown: 0, effect: 'cleanse', effectChance: 1.0 },
   { pt: "Ecos do Passado", romaji: "kako no zankyou", kana: "かこのざんきょう", kanji: "過去の残響", power: 0, type: "utility", element: "time", unlockLevel: 26, cooldown: 11, currentCooldown: 0, effect: 'hint', effectChance: 1.0 },
+  { pt: "Conhecimento", romaji: "chishiki", kana: "ちしき", kanji: "知識", power: 0, type: "utility", element: "utility", unlockLevel: 1, cooldown: 10, currentCooldown: 0, effect: 'reveal_combo', effectChance: 1.0 },
+  { pt: "Interseção", romaji: "kousa", kana: "こうさ", kanji: "交差", power: 0, type: "utility", element: "utility", unlockLevel: 5, cooldown: 15, currentCooldown: 0, effect: 'reveal_2_combos', effectChance: 1.0 },
+  { pt: "Futuro", romaji: "mirai", kana: "みらい", kanji: "未来", power: 0, type: "utility", element: "utility", unlockLevel: 10, cooldown: 12, currentCooldown: 0, effect: 'predict_attack', effectChance: 1.0 },
+  { pt: "Ponto Fraco", romaji: "jakuten", kana: "じゃくてん", kanji: "弱点", power: 0, type: "utility", element: "utility", unlockLevel: 4, cooldown: 8, currentCooldown: 0, effect: 'show_weakness', effectChance: 1.0 },
+  { pt: "Olho da Verdade", romaji: "shingugan", kana: "しんぐがん", kanji: "真眼", power: 0, type: "utility", element: "utility", unlockLevel: 20, cooldown: 30, currentCooldown: 0, effect: 'boss_eye', effectChance: 1.0 },
+  { pt: "Memória", romaji: "kioku", kana: "きおく", kanji: "記憶", power: 0, type: "utility", element: "utility", unlockLevel: 15, cooldown: 20, currentCooldown: 0, effect: 'reduce_cd', effectChance: 1.0 },
+  { pt: "Estrela Cadente", romaji: "ryuusei", kana: "りゅうせい", kanji: "流星", power: 0, type: "utility", element: "utility", unlockLevel: 12, cooldown: 15, currentCooldown: 0, effect: 'autocomplete_next', effectChance: 1.0 },
+  { pt: "Base de Letras", romaji: "tateba", kana: "たてば", kanji: "建場", power: 0, type: "utility", element: "utility", unlockLevel: 8, cooldown: 10, currentCooldown: 0, effect: 'ignore_typo_next', effectChance: 1.0 },
+  { pt: "Eco", romaji: "eko", kana: "えこ", kanji: "エコ", power: 0, type: "utility", element: "utility", unlockLevel: 1, cooldown: 1, currentCooldown: 0, effect: 'echo_next', effectChance: 1.0 },
+  { pt: "Janela Magica", romaji: "hoshi", kana: "ほし", kanji: "星", power: 0, type: "utility", element: "utility", unlockLevel: 1, cooldown: 1, currentCooldown: 0, effect: 'combo_window_up', effectChance: 1.0 },
+  { pt: "Mito", romaji: "shinwa", kana: "しんわ", kanji: "神話", power: 0, type: "utility", element: "utility", unlockLevel: 28, cooldown: 25, currentCooldown: 0, effect: 'reveal_2_combos', effectChance: 1.0 },
   { pt: "Escudo Cósmico", romaji: "uchuu no tate", kana: "うちゅうのたて", kanji: "宇宙の盾", power: 0, type: "status", element: "cosmos", unlockLevel: 30, cooldown: 12, currentCooldown: 0, effect: 'shield', effectChance: 1.0, effectDuration: 6, effectTarget: 'self' }
 ];

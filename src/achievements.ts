@@ -26,7 +26,7 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
   { id: "shiny_hunter_5", name: "Colecionador", description: "Derrote 5 monstros Shiny.", condition: (_, __, s) => s?.shiniesDefeated >= 5 },
   { id: "death_1", name: "É Apenas o Começo", description: "Morra pela primeira vez.", condition: (_, __, s) => s?.deaths >= 1 },
   { id: "death_10", name: "Não Desista", description: "Morra 10 vezes.", condition: (_, __, s) => s?.deaths >= 10 },
-  { id: "spell_1", name: "Iniciado nas Arcanas", description: "Conclure feitiços 15 vezes com sucesso.", condition: (_, __, s) => s?.totalSpellsCast >= 15 },
+  { id: "spell_1", name: "Iniciado nas Arcanas", description: "Conjure feitiços 30 vezes com sucesso.", condition: (_, __, s) => s?.totalSpellsCast >= 30 },
   { id: "spell_100", name: "Conhecimento Básico", description: "Conclure feitiços 100 vezes.", condition: (_, __, s) => s?.totalSpellsCast >= 100 },
   { id: "spell_500", name: "Dicionário Ambulante", description: "Conclure feitiços 500 vezes.", condition: (_, __, s) => s?.totalSpellsCast >= 500 },
   { id: "spell_1000", name: "Senhor das Palavras", description: "Conclure feitiços 1000 vezes.", condition: (_, __, s) => s?.totalSpellsCast >= 1000 },

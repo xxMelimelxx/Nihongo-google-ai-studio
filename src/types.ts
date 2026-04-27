@@ -5,7 +5,7 @@
 
 export type ElementType = 'fire' | 'water' | 'thunder' | 'wind' | 'nature' | 'physical' | 'light' | 'arcane' | 'void' | 'utility' | 'time' | 'music' | 'earth' | 'ice' | 'metal' | 'blood' | 'cosmos';
 
-export type StatusType = 'burn' | 'bleed' | 'freeze' | 'paralyze' | 'weaken' | 'shield' | 'regen' | 'poison' | 'blind' | 'silence' | 'hint' | 'cleanse' | 'reduce_cd' | 'force_bonus' | 'damage_buff';
+export type StatusType = 'burn' | 'bleed' | 'freeze' | 'paralyze' | 'weaken' | 'shield' | 'regen' | 'poison' | 'blind' | 'silence' | 'hint' | 'cleanse' | 'reduce_cd' | 'force_bonus' | 'damage_buff' | 'reveal_combo' | 'reveal_2_combos' | 'predict_attack' | 'show_weakness' | 'boss_eye' | 'echo_next' | 'autocomplete_next' | 'ignore_typo_next' | 'combo_window_up';
 
 export interface StatusEffect {
   type: StatusType;
@@ -51,6 +51,7 @@ export interface Monster extends MonsterTemplate {
   bonusActive: boolean;
   isRare?: boolean;
   isShiny?: boolean;
+  isDying?: boolean;
   variationName?: string;
   variationTranslation?: string;
 }
